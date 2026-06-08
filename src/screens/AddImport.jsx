@@ -2,76 +2,13 @@
 // preview it rendered as chords-over-lyrics, and save.
 import React, { useState } from 'react';
 import { Input, Button, Card, SegmentedControl, Tag, Icon } from '../components/index.js';
+import { cleanToChordPro, uniqueChords, toSections } from '../lib/chordpro.js';
 
-const CHORD_RE = /^[A-G][#b]?(m|maj|min|dim|aug|sus|add)?[0-9]*(\/[A-G][#b]?)?$/;
-function isChordLine(line) {
-  const toks = line.trim().split(/\s+/).filter(Boolean);
-  if (!toks.length) return false;
-  return toks.every((t) => CHORD_RE.test(t));
-}
-
-// Merge a chords-over-lyrics block into inline ChordPro: [C]lyric…
-function cleanToChordPro(raw) {
-  const lines = raw.replace(/\r/g, '').split('\n');
-  const out = [];
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    if (isChordLine(line) && i + 1 < lines.length && !isChordLine(lines[i + 1]) && lines[i + 1].trim()) {
-      const lyric = lines[i + 1];
-      const placed = [];
-      const re = /\S+/g; let m;
-      while ((m = re.exec(line))) placed.push({ col: m.index, chord: m[0] });
-      let result = ''; let cursor = 0;
-      placed.forEach((p) => {
-        const col = Math.min(p.col, lyric.length);
-        result += lyric.slice(cursor, col) + `[${p.chord}]`;
-        cursor = col;
-      });
-      result += lyric.slice(cursor);
-      out.push(result.trimEnd());
-      i++;
-    } else if (isChordLine(line) && line.trim()) {
-      out.push(line.trim().split(/\s+/).map((c) => `[${c}]`).join(' '));
-    } else {
-      out.push(line);
-    }
-  }
-  return out.join('\n').replace(/\n{3,}/g, '\n\n').trim();
-}
-
-// Parse one inline-ChordPro line into {chord,text} segments for rendering.
-function parseLine(line) {
-  const parts = line.split(/(\[[^\]]+\])/g).filter((s) => s !== '');
-  const segs = []; let chord = '';
-  parts.forEach((p) => {
-    const m = p.match(/^\[([^\]]+)\]$/);
-    if (m) chord = m[1];
-    else { segs.push({ chord, text: p }); chord = ''; }
-  });
-  if (chord) segs.push({ chord, text: '' });
-  return segs.length ? segs : [{ chord: '', text: line }];
-}
-
-function detectChords(cleaned) {
-  const set = []; const re = /\[([^\]]+)\]/g; let m;
-  while ((m = re.exec(cleaned))) if (!set.includes(m[1])) set.push(m[1]);
-  return set;
-}
-
-// Turn cleaned ChordPro into the { label, lines:[segments] } section model the
-// song view renders. Blank lines separate sections (no labels on imports).
-function buildSections(cleaned) {
-  return cleaned.split(/\n{2,}/).map((block) => ({
-    label: '',
-    lines: block.split('\n').filter((l) => l.trim() !== '').map(parseLine),
-  })).filter((s) => s.lines.length);
-}
-
-const SAMPLE = `       C              G
+const SAMPLE = `C               G
 Slip inside the eye of your mind
-       Am             E
+Am                 E
 Don't you know you might find
-       F           G
+F                 G
 A better place to play`;
 
 export function AddImport({ onSave, onBack, knownTags = [] }) {
@@ -98,7 +35,8 @@ export function AddImport({ onSave, onBack, knownTags = [] }) {
   };
   const reset = () => { setCleaned(''); setRaw(''); setTitle(''); setArtist(''); setTags([]); setTagDraft(''); };
 
-  const chords = cleaned ? detectChords(cleaned) : [];
+  const chords = cleaned ? uniqueChords(cleaned) : [];
+  const previewSections = cleaned ? toSections(cleaned) : [];
 
   const save = () => {
     onSave && onSave({
@@ -110,8 +48,7 @@ export function AddImport({ onSave, onBack, knownTags = [] }) {
       starred: false,
       added: 'just now',
       status: 'learn',
-      chords,
-      sections: buildSections(cleaned),
+      source: cleaned,
     });
   };
 
@@ -189,19 +126,21 @@ export function AddImport({ onSave, onBack, knownTags = [] }) {
               ? <pre>{cleaned}</pre>
               : (
                 <div className="cp">
-                  {cleaned.split('\n').map((ln, i) => (
-                    ln.trim() === ''
-                      ? <div className="cp-gap" key={i}></div>
-                      : (
-                        <div className="cp-line" key={i}>
-                          {parseLine(ln).map((s, j) => (
+                  {previewSections.map((sec, si) => (
+                    <React.Fragment key={si}>
+                      {sec.label && <div className="cp-seclabel fc-eyebrow">{sec.label}</div>}
+                      {sec.lines.map((line, li) => (
+                        <div className="cp-line" key={li}>
+                          {line.map((s, j) => (
                             <span className="cp-seg" key={j}>
-                              <span className="cp-chord">{s.chord || ' '}</span>
-                              <span className="cp-lyric">{s.text || ' '}</span>
+                              <span className="cp-chord">{s.chord || ' '}</span>
+                              <span className="cp-lyric">{s.text || ' '}</span>
                             </span>
                           ))}
                         </div>
-                      )
+                      ))}
+                      {si < previewSections.length - 1 && <div className="cp-gap"></div>}
+                    </React.Fragment>
                   ))}
                 </div>
               )}

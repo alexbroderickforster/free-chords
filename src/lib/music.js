@@ -1,33 +1,6 @@
-// FreeChords — music utilities: transposition, chord shapes, diagram SVG,
-// and the learning-status model.
-
-const SHARP_SCALE = ['A', 'A#', 'B', 'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#'];
-const FLAT_SCALE = ['A', 'Bb', 'B', 'C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab'];
-
-function normalizeRoot(r) {
-  const map = { 'Db': 'C#', 'Eb': 'D#', 'Gb': 'F#', 'Ab': 'G#', 'Bb': 'A#', 'Cb': 'B', 'Fb': 'E', 'E#': 'F', 'B#': 'C' };
-  return map[r] || r;
-}
-
-// Transpose a chord symbol (e.g. "F#m7", "C/E") by n semitones.
-export function transposeChord(chord, n) {
-  if (!chord || n === 0) return chord;
-  const useFlats = /b/.test(chord) && !/#/.test(chord);
-  return chord.replace(/([A-G][#b]?)/g, (root) => {
-    const norm = normalizeRoot(root);
-    let i = SHARP_SCALE.indexOf(norm);
-    if (i === -1) return root;
-    i = (i + n + 1200) % 12;
-    return (useFlats ? FLAT_SCALE : SHARP_SCALE)[i];
-  });
-}
-
-export function transposeKey(key, n) {
-  if (!key) return key;
-  const m = key.match(/^([A-G][#b]?)(.*)$/);
-  if (!m) return key;
-  return transposeChord(m[1], n) + m[2];
-}
+// FreeChords — music utilities: chord shapes, diagram SVG, and the
+// learning-status model. Chord transposition lives in lib/chordpro.js
+// (it goes through ChordSheetJS's Chord model).
 
 // ---- Learning status: To learn → Learning → Mastered ----
 export const STATUS = {

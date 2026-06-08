@@ -28,7 +28,9 @@ laptop or a tablet on a music stand.
 
 ## Tech
 
-[Vite](https://vite.dev) + [React](https://react.dev). Icons from
+[Vite](https://vite.dev) + [React](https://react.dev). Songs are stored as
+**ChordPro** and parsed/transposed with
+[ChordSheetJS](https://github.com/martijnversluis/ChordSheetJS). Icons from
 [lucide-react](https://lucide.dev). The visual design (tokens, components,
 screens) comes from the FreeChords design system authored in Claude Design.
 
@@ -68,8 +70,6 @@ sample set, but your changes — favorites, learning status, tags, added songs,
 and theme — now **persist in the browser via localStorage**. Planned next steps:
 
 - Sync/back up the songbook beyond a single browser (export/import or a backend).
-- Real [ChordSheetJS](https://github.com/martijnversluis/ChordSheetJS) parsing
-  and rendering for imported songs.
 - Self-hosted fonts and a PWA/installable build for offline use.
 - Editing full songs (key, capo, sections) after import, and per-song playback
   preferences (font size, transpose) that stick.

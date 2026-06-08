@@ -1,16 +1,17 @@
 // SongView — the play-along song view. Teleprompter reading with edge-fade,
 // smooth auto-scroll + speed, transpose / capo, and hover chord diagrams.
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Stepper, prettyKey, Icon } from '../components/index.js';
-import { transposeChord, transposeKey, chordSVG, STATUS } from '../lib/music.js';
+import { chordSVG, STATUS } from '../lib/music.js';
+import { toSections, transposeChordName } from '../lib/chordpro.js';
 
-// One lyric line: chord-over-syllable columns (ChordSheetJS model).
-function ChordLine({ segments, transpose }) {
+// One lyric line: chord-over-syllable columns (chords already transposed).
+function ChordLine({ segments }) {
   return (
     <div className="sv-line">
       {segments.map((seg, i) => (
         <span className="sv-seg" key={i}>
-          <span className="sv-chord">{seg.chord ? transposeChord(seg.chord, transpose) : ' '}</span>
+          <span className="sv-chord">{seg.chord ||' '}</span>
           <span className="sv-lyric">{seg.text || ' '}</span>
         </span>
       ))}
@@ -111,8 +112,9 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
 
   useEffect(() => { updateFocus(); }, [fontSize, transpose]);
 
-  const dispKey = transposeKey(song.key, transpose);
+  const dispKey = transposeChordName(song.key, transpose);
   const status = song.status || 'learn';
+  const sections = useMemo(() => toSections(song.source, transpose), [song.source, transpose]);
 
   return (
     <div className={'sv' + (hideChords ? ' sv--no-chords' : '')} data-playing={playing ? 'true' : 'false'}>
@@ -183,10 +185,10 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
 
       <div className="sv-scroller" ref={scRef}>
         <div className="sv-sheet" style={{ ['--lyric']: Math.round(fontSize * (focusMode ? 1.25 : 1)) + 'px' }}>
-          {song.sections.map((sec, si) => (
+          {sections.map((sec, si) => (
             <section className="sv-section" key={si}>
               {sec.label && <div className="sv-seclabel">{sec.label}</div>}
-              {sec.lines.map((line, li) => <ChordLine key={li} segments={line} transpose={transpose} />)}
+              {sec.lines.map((line, li) => <ChordLine key={li} segments={line} />)}
             </section>
           ))}
           <div className="sv-end">— end —</div>

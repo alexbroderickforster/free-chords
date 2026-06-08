@@ -143,6 +143,7 @@ body {
 .add-chips { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 12px; }
 .add-pre { padding: 16px 18px; background: var(--surface-sunken); }
 .add-pre pre { margin: 0; font-family: var(--font-mono); font-size: var(--text-sm); line-height: 1.7; color: var(--ink); white-space: pre-wrap; }
+.cp-seclabel { display: block; color: var(--accent); margin: 2px 0 8px; }
 .cp-line { display: flex; flex-wrap: wrap; align-items: flex-end; margin-bottom: 8px; }
 .cp-gap { height: 12px; }
 .cp-seg { display: inline-flex; flex-direction: column; align-items: flex-start; }

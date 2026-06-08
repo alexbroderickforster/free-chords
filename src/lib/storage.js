@@ -1,6 +1,7 @@
 // FreeChords — tiny localStorage persistence layer.
 // Versioned keys so a future schema change can migrate or reset cleanly.
-const NS = 'freechords:v1';
+// v2: songs now store ChordPro `source` instead of a `sections` array.
+const NS = 'freechords:v2';
 const key = (name) => `${NS}:${name}`;
 
 function read(name, fallback) {
