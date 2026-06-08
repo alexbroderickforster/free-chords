@@ -122,11 +122,18 @@ async function getToken(interactive) {
 
 const auth = (token) => ({ Authorization: 'Bearer ' + token });
 
+// Surface the real Drive API error (status + Google's message) for diagnosis.
+async function driveError(label, r) {
+  let detail = '';
+  try { const j = await r.json(); detail = j?.error?.message || ''; } catch { /* ignore */ }
+  return new Error(`${label} (${r.status}${detail ? ': ' + detail : ''})`);
+}
+
 async function findFile(token) {
   const url = 'https://www.googleapis.com/drive/v3/files?spaces=appDataFolder'
     + '&fields=files(id,name)&q=' + encodeURIComponent(`name='${FILE_NAME}'`);
   const r = await fetch(url, { headers: auth(token) });
-  if (!r.ok) throw new Error('Drive list failed');
+  if (!r.ok) throw await driveError('Drive list failed', r);
   const j = await r.json();
   return j.files && j.files[0];
 }
@@ -143,7 +150,7 @@ async function createFile(token) {
     headers: { ...auth(token), 'Content-Type': 'application/json' },
     body: JSON.stringify({ name: FILE_NAME, parents: ['appDataFolder'] }),
   });
-  if (!r.ok) throw new Error('Drive create failed');
+  if (!r.ok) throw await driveError('Drive create failed', r);
   return (await r.json()).id;
 }
 
@@ -153,7 +160,7 @@ async function writeFile(token, id, doc) {
     headers: { ...auth(token), 'Content-Type': 'application/json' },
     body: JSON.stringify(doc),
   });
-  if (!r.ok) throw new Error('Drive write failed');
+  if (!r.ok) throw await driveError('Drive write failed', r);
 }
 
 // Pull remote, merge with local, write the merged doc back. Returns the merged

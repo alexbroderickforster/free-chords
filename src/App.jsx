@@ -116,7 +116,11 @@ export function App() {
       adoptDoc(merged); setLastSyncedAt(Date.now());
       setSyncOn(true); saveSyncOptIn(true);
       setSyncStatus('synced'); setToast('Synced with Google Drive');
-    } catch (e) { setSyncStatus('error'); setToast('Couldn’t connect to Google Drive'); }
+    } catch (e) {
+      console.error('[FreeChords sync] connect failed:', e);
+      setSyncStatus('error');
+      setToast('Sync failed: ' + ((e && e.message) || 'unknown'));
+    }
   };
   const syncNow = async (interactive = false) => {
     if (!syncOn && !interactive) return;
