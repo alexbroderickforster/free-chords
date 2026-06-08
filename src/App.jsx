@@ -131,9 +131,10 @@ export function App() {
   // NOTE: 'Add' lives as a button on the Songs page header (not a nav item).
   // 'Practice' is parked — still in screens/Practice.jsx; see that file.
 
+  const markSrc = `${import.meta.env.BASE_URL}freechords-mark.svg`;
   const brand = (
     <>
-      <img src="/freechords-mark.svg" width="30" height="30" alt="" />
+      <img src={markSrc} width="30" height="30" alt="" />
       <span className="fc-sidenav__word">Free<b>Chords</b></span>
     </>
   );
@@ -169,7 +170,7 @@ export function App() {
         {!song && (
           <header className="app-header">
             <div className="app-brand">
-              <img src="/freechords-mark.svg" width="30" height="30" alt="" />
+              <img src={markSrc} width="30" height="30" alt="" />
               <span className="app-word">Free<span className="app-word-accent">Chords</span></span>
             </div>
             <div className="app-header-actions">
