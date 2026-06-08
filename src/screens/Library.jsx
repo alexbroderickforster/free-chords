@@ -112,7 +112,9 @@ export function Library({ songs: songsProp, tags: knownTags = [], onOpen, onAdd,
       </div>
     ));
   } else {
-    body = <div className="lib-list">{songs.map((s) => <SongRow key={s.id} song={s} onOpen={onOpen} onArtist={onArtist} onTag={toggleTag} activeTags={activeTags} onToggleStar={onToggleStar} onCycleStatus={onCycleStatus} />)}</div>;
+    // Normal (ungrouped) view: float starred songs to the top, then the chosen sort.
+    const flat = [...songs].sort((a, b) => (b.starred ? 1 : 0) - (a.starred ? 1 : 0) || cmp(a, b));
+    body = <div className="lib-list">{flat.map((s) => <SongRow key={s.id} song={s} onOpen={onOpen} onArtist={onArtist} onTag={toggleTag} activeTags={activeTags} onToggleStar={onToggleStar} onCycleStatus={onCycleStatus} />)}</div>;
   }
 
   return (
