@@ -6,10 +6,12 @@
    ============================================================ */
 
 :root {
-  /* ---- Families ---- */
-  --font-display: 'Newsreader', Georgia, 'Times New Roman', serif;
-  --font-sans:    'Hanken Grotesk', system-ui, -apple-system, 'Segoe UI', sans-serif;
-  --font-mono:    'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  /* ---- Families ----
+     Self-hosted variable fonts (see main.jsx). The "Variable" family names
+     come from @fontsource-variable; plain names + system fonts are fallbacks. */
+  --font-display: 'Newsreader Variable', 'Newsreader', Georgia, 'Times New Roman', serif;
+  --font-sans:    'Hanken Grotesk Variable', 'Hanken Grotesk', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono:    'JetBrains Mono Variable', 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
 
   /* Lyrics & chords use these aliases so the song view can be retuned in one place */
   --font-lyric:   var(--font-sans);

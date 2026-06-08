@@ -29,14 +29,19 @@ laptop or a tablet on a music stand.
   with live pitch detection and an in-tune meter.
 - **Responsive.** A left sidebar on desktop/web, a bottom tab bar on mobile.
 - **Warm light + low-light dark mode**, deep-indigo accent on warm paper.
+- **Installable PWA.** Add it to your home screen and it runs **fully offline**
+  — the app shell and fonts are self-hosted and cached on the device.
 
 ## Tech
 
 [Vite](https://vite.dev) + [React](https://react.dev). Songs are stored as
 **ChordPro** and parsed/transposed with
 [ChordSheetJS](https://github.com/martijnversluis/ChordSheetJS). Icons from
-[lucide-react](https://lucide.dev). The visual design (tokens, components,
-screens) comes from the FreeChords design system authored in Claude Design.
+[lucide-react](https://lucide.dev); fonts self-hosted via
+[Fontsource](https://fontsource.org); offline support via
+[vite-plugin-pwa](https://vite-pwa-org.netlify.app). The visual design (tokens,
+components, screens) comes from the FreeChords design system authored in Claude
+Design.
 
 ## Getting started
 
@@ -74,8 +79,12 @@ sample set, but your changes — favorites, learning status, tags, added songs,
 and theme — now **persist in the browser via localStorage**. Planned next steps:
 
 - Sync the songbook across devices automatically (a backend / cloud sync).
-- Self-hosted fonts and a PWA/installable build for offline use.
 - Per-song playback preferences (font size, transpose) that stick.
+
+To **install on a phone or tablet**, the app needs to be served over HTTPS
+(install/offline is allowed on `https://…` or `localhost`). Any free static
+host — Netlify, Vercel, GitHub Pages — works; build with `npm run build` and
+deploy the `dist/` folder.
 
 Contributions are welcome — see the license below.
 
