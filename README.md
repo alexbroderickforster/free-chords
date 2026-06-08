@@ -18,7 +18,8 @@ the first load).
   hands-free **auto-scroll** with a speed control, **transpose** (±semitones)
   and **capo** controls, adjustable font size, a **hide-chords** toggle for
   lyrics-only practice, and **hover (or tap) any chord** to see its fretboard
-  diagram. A full-screen mode (desktop) goes edge-to-edge — press **Esc** to leave.
+  diagram (covering essentially any chord, including barre and up-the-neck
+  shapes). A full-screen mode (desktop) goes edge-to-edge — press **Esc** to leave.
   Each song **remembers its own** transpose, font size, hide-chords, and
   auto-scroll speed.
 - **Library / songbook.** Searchable, sortable (Recent / Title / Artist),
@@ -43,8 +44,9 @@ the first load).
 [Vite](https://vite.dev) + [React](https://react.dev). Songs are stored as
 **ChordPro** and parsed/transposed with
 [ChordSheetJS](https://github.com/martijnversluis/ChordSheetJS). Icons from
-[lucide-react](https://lucide.dev); fonts self-hosted via
-[Fontsource](https://fontsource.org); offline support via
+[lucide-react](https://lucide.dev); chord-fingering diagrams from the open
+[chords-db](https://github.com/tombatossals/chords-db) database; fonts
+self-hosted via [Fontsource](https://fontsource.org); offline support via
 [vite-plugin-pwa](https://vite-pwa-org.netlify.app). The visual design (tokens,
 components, screens) comes from the FreeChords design system authored in Claude
 Design.

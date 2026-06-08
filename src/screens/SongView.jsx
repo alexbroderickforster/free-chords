@@ -2,7 +2,8 @@
 // smooth auto-scroll + speed, transpose / capo, and hover chord diagrams.
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Stepper, prettyKey, Icon } from '../components/index.js';
-import { chordSVG, STATUS } from '../lib/music.js';
+import { STATUS } from '../lib/music.js';
+import { chordSVG, preloadChords } from '../lib/chords.js';
 import { toSections, transposeChordName } from '../lib/chordpro.js';
 
 // One lyric line: chord-over-syllable columns (chords already transposed).
@@ -101,6 +102,7 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
 
   // chord-diagram popover (hover / tap) + focus init
   useEffect(() => {
+    preloadChords(); // warm the chord-fingering database before the user hovers
     const sc = scRef.current, pop = popRef.current; if (!sc || !pop) return;
     const show = (c) => {
       const svg = chordSVG(c.textContent.trim());
