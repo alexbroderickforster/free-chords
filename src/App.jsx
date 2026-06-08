@@ -1,6 +1,6 @@
 // FreeChords app shell — responsive: left sidebar on web/desktop,
 // bottom tab bar on mobile. Ties the screens together.
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { TabBar, SideNav, IconButton, Button, Icon } from './components/index.js';
 import { SongView } from './screens/SongView.jsx';
 import { SongEdit } from './screens/SongEdit.jsx';
@@ -17,6 +17,10 @@ import './styles/app.css';
 
 const slugify = (s) =>
   (s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'song';
+
+// A fingerprint of the syncable data — used to push only when it actually changes.
+const syncSig = (songs, tags, prefs, deletions, theme, themeAt) =>
+  JSON.stringify({ s: songs, t: tags, p: prefs, d: deletions, th: theme, ta: themeAt });
 
 export function App() {
   const [tab, setTab] = useState('songs');
@@ -109,11 +113,18 @@ export function App() {
     if (doc.deletions && typeof doc.deletions === 'object') setDeletions(doc.deletions);
     if (doc.theme && (doc.themeAt || 0) > themeAt) { setDark(doc.theme === 'dark'); setThemeAt(doc.themeAt || Date.now()); }
   };
+  // Fingerprint of what's currently on Drive, so we only push real changes.
+  const lastSyncSig = useRef(syncSig(songs, knownTags, prefs, deletions, dark ? 'dark' : 'light', themeAt));
+  const markSynced = (merged) => {
+    lastSyncSig.current = syncSig(merged.songs, merged.tags, merged.prefs, merged.deletions, merged.theme, merged.themeAt);
+    setLastSyncedAt(Date.now());
+  };
+
   const connectSync = async () => {
     try {
       setSyncStatus('syncing');
       const merged = await fullSync(buildDoc(), true);
-      adoptDoc(merged); setLastSyncedAt(Date.now());
+      adoptDoc(merged); markSynced(merged);
       setSyncOn(true); saveSyncOptIn(true);
       setSyncStatus('synced'); setToast('Synced with Google Drive');
     } catch (e) {
@@ -122,13 +133,13 @@ export function App() {
       setToast('Sync failed: ' + ((e && e.message) || 'unknown'));
     }
   };
-  const syncNow = async (interactive = false) => {
+  const syncNow = async (interactive = false, silent = false) => {
     if (!syncOn && !interactive) return;
-    if (typeof navigator !== 'undefined' && !navigator.onLine) { setSyncStatus('offline'); return; }
+    if (typeof navigator !== 'undefined' && !navigator.onLine) { if (!silent) setSyncStatus('offline'); return; }
     try {
-      setSyncStatus('syncing');
+      if (!silent) setSyncStatus('syncing'); // silent = quiet background pull on load
       const merged = await fullSync(buildDoc(), interactive);
-      adoptDoc(merged); setLastSyncedAt(Date.now());
+      adoptDoc(merged); markSynced(merged);
       setSyncStatus('synced');
     } catch (e) { setSyncStatus('error'); }
   };
@@ -137,32 +148,29 @@ export function App() {
     setToast('Disconnected from Google Drive');
   };
 
-  // Resume: if previously connected, attempt a best-effort silent sync on load.
+  // On load, pull once so edits made on another device show up. (This is the
+  // only automatic full sync; everything else is change-driven.)
   useEffect(() => {
-    if (syncOn && syncConfigured()) syncNow(false);
+    if (syncOn && syncConfigured()) syncNow(false, true); // silent
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Debounced push of local changes once connected (no UI; ignore failures).
+  // Push, debounced, only when the songbook data actually changed since the
+  // last sync — not on plain page loads or tab switches.
   useEffect(() => {
     if (!syncOn) return;
+    const sig = syncSig(songs, knownTags, prefs, deletions, dark ? 'dark' : 'light', themeAt);
+    if (sig === lastSyncSig.current) return; // nothing new to save
     if (typeof navigator !== 'undefined' && !navigator.onLine) { setSyncStatus('offline'); return; }
+    setSyncStatus('syncing');
     const t = setTimeout(() => {
-      syncPush(buildDoc()).then(() => { setSyncStatus('synced'); setLastSyncedAt(Date.now()); }).catch(() => setSyncStatus('error'));
+      syncPush(buildDoc())
+        .then(() => { lastSyncSig.current = sig; setSyncStatus('synced'); setLastSyncedAt(Date.now()); })
+        .catch(() => setSyncStatus('error'));
     }, 1500);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [songs, knownTags, prefs, deletions, syncOn]);
-
-  // Re-sync when the tab regains focus or the network returns.
-  useEffect(() => {
-    if (!syncOn) return;
-    const onWake = () => syncNow(false);
-    window.addEventListener('focus', onWake);
-    window.addEventListener('online', onWake);
-    return () => { window.removeEventListener('focus', onWake); window.removeEventListener('online', onWake); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [syncOn]);
+  }, [songs, knownTags, prefs, deletions, dark, themeAt, syncOn]);
 
   // Editing a saved song.
   const saveEdit = (id, patch) => { updateSong(id, patch); setEditing(false); setToast('Saved changes'); };
