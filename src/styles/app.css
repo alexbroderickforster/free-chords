@@ -119,6 +119,12 @@ body {
 .lib-rowtag:hover { color: var(--accent); }
 .lib-rowtag.is-on { background: var(--accent-soft); color: var(--accent); border-color: color-mix(in oklab, var(--accent) 30%, transparent); }
 
+/* ---- Library backup (export / import) ---- */
+.lib-backup { margin-top: 32px; padding-top: 22px; border-top: 1px solid var(--line); }
+.lib-backup-lbl { display: block; margin: 0 2px 12px; }
+.lib-backup-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.lib-backup-hint { color: var(--ink-faint); font-size: var(--text-sm); line-height: 1.5; margin: 12px 2px 0; max-width: 48ch; }
+
 /* ---- Add / import ---- */
 .add-fields { display: flex; gap: 14px; margin-bottom: 16px; }
 .add-fields > * { flex: 1; min-width: 0; }

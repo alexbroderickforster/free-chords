@@ -1,5 +1,5 @@
 // Library — the songbook. Search, sort, group-by-artist, tag filters; quiet rows.
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Input, Tag, SegmentedControl, Switch, Button, Card, KeyBadge, Icon } from '../components/index.js';
 import { STATUS } from '../lib/music.js';
 
@@ -62,11 +62,18 @@ function SongRow({ song, onOpen, onArtist, onTag, activeTags, onToggleStar, onCy
   );
 }
 
-export function Library({ songs: songsProp, tags: knownTags = [], onOpen, onAdd, artistFilter, onClearArtist, onArtist, onToggleStar, onCycleStatus }) {
+export function Library({ songs: songsProp, tags: knownTags = [], onOpen, onAdd, artistFilter, onClearArtist, onArtist, onToggleStar, onCycleStatus, onExport, onImport }) {
   const [q, setQ] = useState('');
   const [activeTags, setActiveTags] = useState([]);
   const [sort, setSort] = useState('recent');
   const [group, setGroup] = useState(false);
+  const fileRef = useRef(null);
+
+  const pickFile = (e) => {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = ''; // allow re-importing the same file
+    if (file && onImport) onImport(file);
+  };
 
   const toggleTag = (t) =>
     setActiveTags((cur) => (cur.includes(t) ? cur.filter((x) => x !== t) : [...cur, t]));
@@ -146,6 +153,22 @@ export function Library({ songs: songsProp, tags: knownTags = [], onOpen, onAdd,
       <div className="lib-count">{songs.length} {songs.length === 1 ? 'song' : 'songs'}</div>
 
       {body}
+
+      {!artistFilter && (onExport || onImport) && (
+        <div className="lib-backup">
+          <div className="fc-eyebrow lib-backup-lbl">Backup</div>
+          <div className="lib-backup-actions">
+            {onExport && (
+              <Button variant="secondary" size="sm" iconLeft={<Icon n="download" s={16} />} onClick={onExport}>Export songbook</Button>
+            )}
+            {onImport && (
+              <Button variant="secondary" size="sm" iconLeft={<Icon n="upload" s={16} />} onClick={() => fileRef.current && fileRef.current.click()}>Import…</Button>
+            )}
+            <input ref={fileRef} type="file" accept="application/json,.json" hidden onChange={pickFile} />
+          </div>
+          <p className="lib-backup-hint">Save your songbook to a file, or restore from one. Importing merges songs into your library.</p>
+        </div>
+      )}
     </div>
   );
 }

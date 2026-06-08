@@ -9,6 +9,7 @@ import { TunerView } from './screens/TunerView.jsx';
 import { SONGS, ALL_TAGS } from './data/songs.js';
 import { nextStatus } from './lib/music.js';
 import { loadSongs, saveSongs, loadTags, saveTags, loadTheme, saveTheme } from './lib/storage.js';
+import { exportSongbook, parseBackup } from './lib/backup.js';
 import './styles/app.css';
 
 const slugify = (s) =>
@@ -73,6 +74,34 @@ export function App() {
   const cycleStatus = (id) => { const s = songs.find((x) => x.id === id); updateSong(id, { status: nextStatus(s && s.status) }); };
   const updateTags = (id, tags) => updateSong(id, { tags });
 
+  // Export the whole songbook to a JSON file the user can keep or share.
+  const exportData = () => {
+    const n = exportSongbook(songs, knownTags);
+    setToast(`Exported ${n} ${n === 1 ? 'song' : 'songs'}`);
+  };
+
+  // Import a backup file: merge songs by id (incoming wins) and union tags.
+  const importData = async (file) => {
+    if (!file) return;
+    try {
+      const { songs: incoming, tags: incomingTags } = parseBackup(await file.text());
+      setSongs((prev) => {
+        const byId = new Map(prev.map((s) => [s.id, s]));
+        incoming.forEach((s) => byId.set(s.id, s));
+        return Array.from(byId.values());
+      });
+      setKnownTags((prev) => {
+        const merged = [...prev];
+        incomingTags.forEach((t) => { if (!merged.includes(t)) merged.push(t); });
+        return merged;
+      });
+      setToast(`Imported ${incoming.length} ${incoming.length === 1 ? 'song' : 'songs'}`);
+      setTab('songs');
+    } catch (e) {
+      setToast('Couldn’t read that file');
+    }
+  };
+
   // Add a freshly-imported song to the top of the library (with a unique id).
   const addSong = (draft) => {
     setSongs((prev) => {
@@ -103,7 +132,7 @@ export function App() {
     ? <SongView song={song} onBack={closeSong} onArtist={goArtist} dark={dark} onToggleTheme={toggleTheme} focusMode={focus} onToggleFocus={() => setFocus((f) => !f)} onToggleStar={toggleStar} onCycleStatus={cycleStatus} onUpdateTags={updateTags} />
     : (
       <main className="app-body">
-        {tab === 'songs' && <Library songs={songs} tags={knownTags} onOpen={openSong} onAdd={() => setTab('add')} artistFilter={artistFilter} onClearArtist={() => setArtistFilter(null)} onArtist={goArtist} onToggleStar={toggleStar} onCycleStatus={cycleStatus} />}
+        {tab === 'songs' && <Library songs={songs} tags={knownTags} onOpen={openSong} onAdd={() => setTab('add')} artistFilter={artistFilter} onClearArtist={() => setArtistFilter(null)} onArtist={goArtist} onToggleStar={toggleStar} onCycleStatus={cycleStatus} onExport={exportData} onImport={importData} />}
         {tab === 'add' && <AddImport onBack={() => setTab('songs')} knownTags={knownTags} onSave={addSong} />}
         {tab === 'tuner' && <TunerView />}
       </main>

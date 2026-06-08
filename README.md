@@ -19,6 +19,8 @@ laptop or a tablet on a music stand.
   group-by-artist, and tag-filterable. Each song shows its key, when it was
   added, a favorite **★**, and a learning status (**To learn → Learning →
   Mastered**) you can cycle inline. Click an artist to see all their songs.
+  **Export** your whole songbook to a JSON file and **import** it back (merges
+  by song) to move it between browsers or share it.
 - **Add / import.** Paste raw chords copied from a webpage and clean them into
   ChordPro, with a live rendered preview and detected-chord chips.
 - **Tuner.** Reference tones for each string plus a microphone "Listen" mode
@@ -69,7 +71,7 @@ This is a personal app and a work in progress. The songbook starts from a small
 sample set, but your changes — favorites, learning status, tags, added songs,
 and theme — now **persist in the browser via localStorage**. Planned next steps:
 
-- Sync/back up the songbook beyond a single browser (export/import or a backend).
+- Sync the songbook across devices automatically (a backend / cloud sync).
 - Self-hosted fonts and a PWA/installable build for offline use.
 - Editing full songs (key, capo, sections) after import, and per-song playback
   preferences (font size, transpose) that stick.
