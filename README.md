@@ -80,9 +80,12 @@ public/         brand SVGs (mark + wordmark)
 
 ## Status & roadmap
 
-This is a personal app and a work in progress. The songbook starts from a small
-sample set, but your changes — favorites, learning status, tags, added songs,
-and theme — now **persist in the browser via localStorage**. Planned next steps:
+This is a personal app and a work in progress. The app ships with **one sample
+song** so the layout is clear on first run; everything else — the songs you add,
+favorites, learning status, tags, per-song playback prefs, and theme — is stored
+**only in your own browser** (`localStorage`). Nothing you add is uploaded or
+shared, and every visitor to a hosted copy gets their own private songbook.
+Planned next steps:
 
 - Sync the songbook across devices automatically (a backend / cloud sync).
 

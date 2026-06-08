@@ -2,6 +2,7 @@
 import React, { useState, useRef } from 'react';
 import { Input, Tag, SegmentedControl, Switch, Button, Card, KeyBadge, Icon } from '../components/index.js';
 import { STATUS } from '../lib/music.js';
+import { loadHelpDismissed, saveHelpDismissed } from '../lib/storage.js';
 
 function recencyDays(s) {
   s = (s || '').toLowerCase();
@@ -36,7 +37,7 @@ function SongRow({ song, onOpen, onArtist, onTag, activeTags, onToggleStar, onCy
                 onKeyDown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); onArtist(song.artist); } }}>{song.artist}</span>
             : <span>{song.artist}</span>}
           <span className="lib-dot">·</span>
-          <span>Added {song.added}</span>
+          {song.added === 'sample' ? <span>Sample</span> : <span>Added {song.added}</span>}
         </div>
         {song.tags && song.tags.length > 0 && (
           <div className="lib-rowtags">
@@ -67,7 +68,11 @@ export function Library({ songs: songsProp, tags: knownTags = [], onOpen, onAdd,
   const [activeTags, setActiveTags] = useState([]);
   const [sort, setSort] = useState('recent');
   const [group, setGroup] = useState(false);
+  const [helpDismissed, setHelpDismissed] = useState(() => loadHelpDismissed());
   const fileRef = useRef(null);
+
+  const dismissHelp = () => { setHelpDismissed(true); saveHelpDismissed(true); };
+  const total = (songsProp || []).length;
 
   const pickFile = (e) => {
     const file = e.target.files && e.target.files[0];
@@ -94,7 +99,15 @@ export function Library({ songs: songsProp, tags: knownTags = [], onOpen, onAdd,
 
   let body;
   if (songs.length === 0) {
-    body = <div className="empty">Nothing here yet. Paste a song to get started.</div>;
+    body = total === 0 ? (
+      <div className="lib-emptystate">
+        <div className="lib-emptystate-title">Your songbook is empty</div>
+        <p>Add a song to get started — paste chords copied from anywhere and they'll be lined up into a clean sheet.</p>
+        {onAdd && <Button variant="primary" iconLeft={<Icon n="plus" s={17} />} onClick={onAdd}>Add a song</Button>}
+      </div>
+    ) : (
+      <div className="empty">No songs match your search.</div>
+    );
   } else if (group) {
     const groups = {};
     songs.forEach((s) => { (groups[s.artist] = groups[s.artist] || []).push(s); });
@@ -120,6 +133,15 @@ export function Library({ songs: songsProp, tags: knownTags = [], onOpen, onAdd,
           )}
         </div>
       </div>
+
+      {!artistFilter && !helpDismissed && total <= 1 && (
+        <div className="lib-welcome">
+          <button className="lib-welcome-x" aria-label="Dismiss" onClick={dismissHelp}><Icon n="x" s={16} /></button>
+          <div className="lib-welcome-title">Welcome to your songbook</div>
+          <p className="lib-welcome-body">There's one sample song to show how a chord sheet looks. Add your own — paste chords copied from anywhere and FreeChords lines them up above the lyrics. Everything you add stays on this device.</p>
+          {onAdd && <Button variant="primary" size="sm" iconLeft={<Icon n="plus" s={17} />} onClick={onAdd}>Add your first song</Button>}
+        </div>
+      )}
 
       {artistFilter && (
         <button className="lib-artistchip" onClick={onClearArtist}>

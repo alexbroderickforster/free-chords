@@ -37,6 +37,10 @@ export function saveTags(tags) { write('tags', tags); }
 export function loadTheme() { return read('theme', 'light') === 'dark'; }
 export function saveTheme(dark) { write('theme', dark ? 'dark' : 'light'); }
 
+// Whether the one-time "add your first song" welcome has been dismissed.
+export function loadHelpDismissed() { return read('helpDismissed', false) === true; }
+export function saveHelpDismissed(v) { write('helpDismissed', !!v); }
+
 // Per-song playback preferences, keyed by song id:
 // { [id]: { transpose, fontSize, hideChords, speed } }
 export function loadPrefs() {
