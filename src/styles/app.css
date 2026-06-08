@@ -196,7 +196,7 @@ body {
 .cp-line { display: flex; flex-wrap: wrap; align-items: flex-end; margin-bottom: 8px; }
 .cp-gap { height: 12px; }
 .cp-seg { display: inline-flex; flex-direction: column; align-items: flex-start; }
-.cp-chord { font-family: var(--font-mono); font-weight: 700; font-size: 13px; color: var(--chord); line-height: 1.1; height: 1.4em; white-space: pre; }
+.cp-chord { font-family: var(--font-mono); font-weight: 700; font-size: 13px; color: var(--chord); line-height: 1.1; height: 1.4em; padding-right: 0.6em; white-space: pre; }
 .cp-lyric { font-size: 17px; line-height: 1.25; color: var(--ink); white-space: pre-wrap; }
 .add-save { display: flex; justify-content: flex-end; gap: 10px; margin-top: 16px; }
 @media (max-width: 560px) { .add-fields { flex-direction: column; gap: 12px; } }
@@ -279,7 +279,7 @@ body {
 .sv-seclabel { font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); margin-bottom: 12px; }
 .sv-line { display: flex; flex-wrap: wrap; align-items: flex-end; row-gap: 0.6em; margin-bottom: 14px; border-radius: 10px; padding: 2px 8px; margin-left: -8px; transition: opacity .18s ease; }
 .sv-seg { display: inline-flex; flex-direction: column; align-items: flex-start; }
-.sv-chord { font-family: var(--font-mono); font-weight: 700; font-size: calc(var(--lyric) * 0.66); color: var(--chord); line-height: 1.1; height: 1.5em; white-space: pre; cursor: help; }
+.sv-chord { font-family: var(--font-mono); font-weight: 700; font-size: calc(var(--lyric) * 0.66); color: var(--chord); line-height: 1.1; height: 1.5em; padding-right: 0.6em; white-space: pre; cursor: help; }
 .sv--no-chords .sv-chord { display: none; }
 .sv--no-chords .sv-line { margin-bottom: 8px; }
 .sv-chord:hover { text-decoration: underline dotted; text-underline-offset: 4px; text-decoration-color: var(--accent-tint); }
@@ -310,6 +310,7 @@ body {
 
 @media (min-width: 880px) {
   .sv-title { text-align: left; }
+  .sv-namerow { justify-content: flex-start; }
   .sv-sub { justify-content: flex-start; }
   .sv-sheet { padding-top: 9dvh; padding-bottom: 20dvh; }
   /* Full-screen play mode: use more of the width so everything reads bigger */

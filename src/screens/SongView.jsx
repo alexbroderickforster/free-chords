@@ -86,7 +86,10 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
       const dt = now - lastRef.current; lastRef.current = now;
       const sc = scRef.current;
       if (sc) {
-        accRef.current += (speed * 14) * dt / 1000;
+        // Quadratic curve: speed 1 is a gentle crawl (~4px/s), ramping up to a
+        // brisk scroll at 12 (~104px/s) — finer control at the slow end.
+        const pxPerSec = speed * speed * 0.7 + 3;
+        accRef.current += pxPerSec * dt / 1000;
         if (accRef.current >= 1) {
           const whole = Math.floor(accRef.current); accRef.current -= whole;
           sc.scrollTop += whole;
