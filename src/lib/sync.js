@@ -39,7 +39,14 @@ export function mergeDocs(a, b) {
   }
   const tags = Array.from(new Set([...(a.tags || []), ...(b.tags || [])]));
   const prefs = { ...(a.prefs || {}), ...(b.prefs || {}) };
-  return { songs, tags, prefs, deletions };
+  // Theme: last-write-wins by its own timestamp.
+  const themed = [];
+  if (a.theme) themed.push({ theme: a.theme, themeAt: a.themeAt || 0 });
+  if (b.theme) themed.push({ theme: b.theme, themeAt: b.themeAt || 0 });
+  themed.sort((x, y) => y.themeAt - x.themeAt);
+  const out = { songs, tags, prefs, deletions };
+  if (themed.length) { out.theme = themed[0].theme; out.themeAt = themed[0].themeAt; }
+  return out;
 }
 
 // ---- Google Identity Services + Drive REST ------------------------------

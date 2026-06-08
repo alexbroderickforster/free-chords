@@ -139,23 +139,34 @@ body {
 .edit-foot-r { display: flex; gap: 10px; margin-left: auto; }
 .edit-confirm { display: inline-flex; align-items: center; gap: 8px; color: var(--ink); font-size: var(--text-sm); font-weight: 600; }
 
-/* ---- Library backup (export / import) ---- */
-.lib-backup { margin-top: 32px; padding-top: 22px; border-top: 1px solid var(--line); }
-.lib-backup-lbl { display: block; margin: 0 2px 12px; }
-.lib-backup-actions { display: flex; flex-wrap: wrap; gap: 10px; }
-.lib-backup-hint { color: var(--ink-faint); font-size: var(--text-sm); line-height: 1.5; margin: 12px 2px 0; max-width: 48ch; }
+/* ---- Backup + sync controls (sidebar footer on desktop, library on mobile) ---- */
+.bk-label { display: block; margin: 0 2px 10px; }
+.bk-files { display: flex; gap: 6px; }
+.bk-files .fc-btn { flex: 1; justify-content: flex-start; }
+.bk-sync { margin-top: 10px; }
+.bk-synced { padding: 2px 2px 0; }
+.bk-status { display: flex; align-items: center; gap: 8px; font-size: var(--text-sm); font-weight: 600; color: var(--ink-soft); }
+.bk-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ink-faint); flex: none; }
+.bk-status--synced .bk-dot { background: var(--good); }
+.bk-status--syncing .bk-dot { background: var(--accent); }
+.bk-status--error { color: var(--danger); }
+.bk-status--error .bk-dot { background: var(--danger); }
+.bk-when { font-size: var(--text-xs); color: var(--ink-faint); margin: 3px 0 0 16px; }
+.bk-sync-actions { display: flex; align-items: center; gap: 8px; margin: 8px 0 0 16px; }
+.bk-link { border: none; background: none; padding: 0; cursor: pointer; color: var(--accent); font-family: var(--font-sans); font-size: var(--text-sm); font-weight: 600; }
+.bk-link:hover { color: var(--accent-hover); text-decoration: underline; }
+.bk-sep { color: var(--ink-faint); }
 
-/* Google Drive sync */
-.lib-sync { margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--line-soft); }
-.lib-sync-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
-.lib-sync-actions { display: flex; gap: 4px; }
-.lib-sync-status { display: inline-flex; align-items: center; gap: 8px; font-size: var(--text-sm); font-weight: 600; color: var(--ink-soft); }
-.lib-sync-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ink-faint); flex: none; }
-.lib-sync-status--synced .lib-sync-dot { background: var(--good); }
-.lib-sync-status--syncing .lib-sync-dot { background: var(--accent); }
-.lib-sync-status--offline .lib-sync-dot { background: var(--ink-faint); }
-.lib-sync-status--error .lib-sync-dot { background: var(--danger); }
-.lib-sync-status--error { color: var(--danger); }
+/* In the desktop sidebar footer: stack the export/import buttons. */
+.bk--sidenav .bk-files { flex-direction: column; }
+.bk--sidenav .bk-files .fc-btn { width: 100%; }
+
+/* Divider that sets the dark-mode toggle apart in the sidebar footer. */
+.app-footdiv { height: 1px; background: var(--accent-tint); opacity: 0.5; margin: 4px 2px; border-radius: 1px; }
+
+/* Mobile-only: backup lives at the bottom of the library (no sidebar there). */
+.lib-backup-mobile { margin-top: 32px; padding-top: 22px; border-top: 1px solid var(--line); }
+@media (min-width: 880px) { .lib-backup-mobile { display: none; } }
 
 /* ---- Add / import ---- */
 .add-fields { display: flex; gap: 14px; margin-bottom: 16px; }

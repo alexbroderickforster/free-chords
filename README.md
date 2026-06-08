@@ -137,7 +137,8 @@ cp .env.example .env
 npm run dev
 ```
 
-The **Sync with Google Drive** button appears in the Songs page (Backup section).
+The **Backup** controls (Export, Import, and **Sync with Google Drive**) live in
+the sidebar footer on desktop, and at the bottom of the Songs page on mobile.
 
 ### 3. Use it on the deployed site
 

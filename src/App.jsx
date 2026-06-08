@@ -9,7 +9,8 @@ import { AddImport } from './screens/AddImport.jsx';
 import { TunerView } from './screens/TunerView.jsx';
 import { SONGS, ALL_TAGS } from './data/songs.js';
 import { nextStatus } from './lib/music.js';
-import { loadSongs, saveSongs, loadTags, saveTags, loadTheme, saveTheme, loadPrefs, savePrefs, loadDeletions, saveDeletions, loadSyncOptIn, saveSyncOptIn } from './lib/storage.js';
+import { BackupControls } from './screens/Backup.jsx';
+import { loadSongs, saveSongs, loadTags, saveTags, loadTheme, saveTheme, loadThemeAt, saveThemeAt, loadPrefs, savePrefs, loadDeletions, saveDeletions, loadSyncOptIn, saveSyncOptIn } from './lib/storage.js';
 import { exportSongbook, parseBackup } from './lib/backup.js';
 import { isConfigured as syncConfigured, fullSync, push as syncPush, disconnect as syncDisconnect } from './lib/sync.js';
 import './styles/app.css';
@@ -31,11 +32,14 @@ export function App() {
   const [deletions, setDeletions] = useState(() => loadDeletions());
   const [syncOn, setSyncOn] = useState(() => loadSyncOptIn());
   const [syncStatus, setSyncStatus] = useState('idle'); // idle | syncing | synced | offline | error
+  const [themeAt, setThemeAt] = useState(() => loadThemeAt());
+  const [lastSyncedAt, setLastSyncedAt] = useState(0);
 
   useEffect(() => {
     document.documentElement.dataset.theme = dark ? 'dark' : 'light';
     saveTheme(dark);
   }, [dark]);
+  useEffect(() => { saveThemeAt(themeAt); }, [themeAt]);
 
   // Persist the songbook, known-tags list, playback prefs, and deletions.
   useEffect(() => { saveSongs(songs); }, [songs]);
@@ -71,7 +75,7 @@ export function App() {
   const openSong = (s) => setSong(s);
   const closeSong = () => { setSong(null); setFocus(false); setEditing(false); };
   const goTab = (t) => { setSong(null); setFocus(false); setEditing(false); setTab(t); };
-  const toggleTheme = () => setDark((d) => !d);
+  const toggleTheme = () => { setDark((d) => !d); setThemeAt(Date.now()); };
   const goArtist = (artist) => { setSong(null); setFocus(false); setEditing(false); setArtistFilter(artist); setTab('songs'); };
 
   // Mutable songbook: star + learning-status toggles reflect everywhere.
@@ -92,19 +96,24 @@ export function App() {
     setPrefs((prev) => ({ ...prev, [id]: { ...PREF_DEFAULTS, ...(prev[id] || {}), ...patch } }));
 
   // ---- Google Drive sync (opt-in, offline-first) ----
-  const buildDoc = () => ({ version: 1, updatedAt: Date.now(), songs, tags: knownTags, prefs, deletions });
+  const buildDoc = () => ({
+    version: 1, updatedAt: Date.now(),
+    songs, tags: knownTags, prefs, deletions,
+    theme: dark ? 'dark' : 'light', themeAt,
+  });
   const adoptDoc = (doc) => {
     if (!doc) return;
     if (Array.isArray(doc.songs)) setSongs(doc.songs);
     if (Array.isArray(doc.tags)) setKnownTags(doc.tags);
     if (doc.prefs && typeof doc.prefs === 'object') setPrefs(doc.prefs);
     if (doc.deletions && typeof doc.deletions === 'object') setDeletions(doc.deletions);
+    if (doc.theme && (doc.themeAt || 0) > themeAt) { setDark(doc.theme === 'dark'); setThemeAt(doc.themeAt || Date.now()); }
   };
   const connectSync = async () => {
     try {
       setSyncStatus('syncing');
       const merged = await fullSync(buildDoc(), true);
-      adoptDoc(merged);
+      adoptDoc(merged); setLastSyncedAt(Date.now());
       setSyncOn(true); saveSyncOptIn(true);
       setSyncStatus('synced'); setToast('Synced with Google Drive');
     } catch (e) { setSyncStatus('error'); setToast('Couldn’t connect to Google Drive'); }
@@ -115,7 +124,7 @@ export function App() {
     try {
       setSyncStatus('syncing');
       const merged = await fullSync(buildDoc(), interactive);
-      adoptDoc(merged);
+      adoptDoc(merged); setLastSyncedAt(Date.now());
       setSyncStatus('synced');
     } catch (e) { setSyncStatus('error'); }
   };
@@ -135,7 +144,7 @@ export function App() {
     if (!syncOn) return;
     if (typeof navigator !== 'undefined' && !navigator.onLine) { setSyncStatus('offline'); return; }
     const t = setTimeout(() => {
-      syncPush(buildDoc()).then(() => setSyncStatus('synced')).catch(() => setSyncStatus('error'));
+      syncPush(buildDoc()).then(() => { setSyncStatus('synced'); setLastSyncedAt(Date.now()); }).catch(() => setSyncStatus('error'));
     }, 1500);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -160,17 +169,17 @@ export function App() {
     setToast('Deleted song');
   };
 
-  // Export the whole songbook to a JSON file the user can keep or share.
+  // Export the whole songbook (songs, tags, per-song prefs, theme) to a file.
   const exportData = () => {
-    const n = exportSongbook(songs, knownTags);
+    const n = exportSongbook(songs, knownTags, prefs, dark ? 'dark' : 'light');
     setToast(`Exported ${n} ${n === 1 ? 'song' : 'songs'}`);
   };
 
-  // Import a backup file: merge songs by id (incoming wins) and union tags.
+  // Import a backup file: merge songs by id, union tags, restore prefs + theme.
   const importData = async (file) => {
     if (!file) return;
     try {
-      const { songs: incoming, tags: incomingTags } = parseBackup(await file.text());
+      const { songs: incoming, tags: incomingTags, prefs: incomingPrefs, theme: incomingTheme } = parseBackup(await file.text());
       const now = Date.now();
       setSongs((prev) => {
         const byId = new Map(prev.map((s) => [s.id, s]));
@@ -182,6 +191,10 @@ export function App() {
         incomingTags.forEach((t) => { if (!merged.includes(t)) merged.push(t); });
         return merged;
       });
+      if (incomingPrefs && Object.keys(incomingPrefs).length) {
+        setPrefs((prev) => ({ ...prev, ...incomingPrefs }));
+      }
+      if (incomingTheme) { setDark(incomingTheme === 'dark'); setThemeAt(now); }
       setToast(`Imported ${incoming.length} ${incoming.length === 1 ? 'song' : 'songs'}`);
       setTab('songs');
     } catch (e) {
@@ -208,6 +221,13 @@ export function App() {
   // NOTE: 'Add' lives as a button on the Songs page header (not a nav item).
   // 'Practice' is parked — still in screens/Practice.jsx; see that file.
 
+  // Backup + sync controls, shared between the desktop sidebar and mobile.
+  const backupProps = {
+    onExport: exportData, onImport: importData,
+    syncConfigured: syncConfigured(), syncOn, syncStatus, lastSyncedAt,
+    onConnectSync: connectSync, onSyncNow: () => syncNow(true), onDisconnectSync: disconnectSync,
+  };
+
   const markSrc = `${import.meta.env.BASE_URL}freechords-mark.svg`;
   const brand = (
     <>
@@ -222,8 +242,8 @@ export function App() {
     ? <SongView song={song} onBack={closeSong} onArtist={goArtist} dark={dark} onToggleTheme={toggleTheme} focusMode={focus} onToggleFocus={() => setFocus((f) => !f)} onToggleStar={toggleStar} onCycleStatus={cycleStatus} onUpdateTags={updateTags} onEdit={() => setEditing(true)} prefs={prefsFor(song.id)} onSavePref={(patch) => savePref(song.id, patch)} onCapo={(v) => updateSong(song.id, { capo: v })} />
     : (
       <main className="app-body">
-        {tab === 'songs' && <Library songs={songs} tags={knownTags} onOpen={openSong} onAdd={() => setTab('add')} artistFilter={artistFilter} onClearArtist={() => setArtistFilter(null)} onArtist={goArtist} onToggleStar={toggleStar} onCycleStatus={cycleStatus} onExport={exportData} onImport={importData}
-          syncConfigured={syncConfigured()} syncOn={syncOn} syncStatus={syncStatus} onConnectSync={connectSync} onSyncNow={() => syncNow(true)} onDisconnectSync={disconnectSync} />}
+        {tab === 'songs' && <Library songs={songs} tags={knownTags} onOpen={openSong} onAdd={() => setTab('add')} artistFilter={artistFilter} onClearArtist={() => setArtistFilter(null)} onArtist={goArtist} onToggleStar={toggleStar} onCycleStatus={cycleStatus}
+          backupSlot={<BackupControls className="bk--mobile" {...backupProps} />} />}
         {tab === 'add' && <AddImport onBack={() => setTab('songs')} knownTags={knownTags} onSave={addSong} />}
         {tab === 'tuner' && <TunerView />}
       </main>
@@ -238,9 +258,13 @@ export function App() {
         value={tab}
         onChange={goTab}
         footer={
-          <Button variant="ghost" block iconLeft={<Icon n={dark ? 'sun' : 'moon'} s={18} />} onClick={toggleTheme}>
-            {dark ? 'Light mode' : 'Dark mode'}
-          </Button>
+          <>
+            <BackupControls className="bk--sidenav" {...backupProps} />
+            <div className="app-footdiv" aria-hidden="true" />
+            <Button variant="ghost" block iconLeft={<Icon n={dark ? 'sun' : 'moon'} s={18} />} onClick={toggleTheme}>
+              {dark ? 'Light mode' : 'Dark mode'}
+            </Button>
+          </>
         }
       />
 

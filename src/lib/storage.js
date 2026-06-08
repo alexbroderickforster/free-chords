@@ -36,6 +36,8 @@ export function saveTags(tags) { write('tags', tags); }
 
 export function loadTheme() { return read('theme', 'light') === 'dark'; }
 export function saveTheme(dark) { write('theme', dark ? 'dark' : 'light'); }
+export function loadThemeAt() { return read('themeAt', 0) || 0; }
+export function saveThemeAt(at) { write('themeAt', at); }
 
 // Whether the one-time "add your first song" welcome has been dismissed.
 export function loadHelpDismissed() { return read('helpDismissed', false) === true; }
