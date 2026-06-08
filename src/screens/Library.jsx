@@ -63,7 +63,11 @@ function SongRow({ song, onOpen, onArtist, onTag, activeTags, onToggleStar, onCy
   );
 }
 
-export function Library({ songs: songsProp, tags: knownTags = [], onOpen, onAdd, artistFilter, onClearArtist, onArtist, onToggleStar, onCycleStatus, onExport, onImport }) {
+const SYNC_LABEL = {
+  syncing: 'Syncing…', synced: 'Synced', offline: 'Offline — will sync later', error: 'Sync error — tap to retry',
+};
+
+export function Library({ songs: songsProp, tags: knownTags = [], onOpen, onAdd, artistFilter, onClearArtist, onArtist, onToggleStar, onCycleStatus, onExport, onImport, syncConfigured, syncOn, syncStatus, onConnectSync, onSyncNow, onDisconnectSync }) {
   const [q, setQ] = useState('');
   const [activeTags, setActiveTags] = useState([]);
   const [sort, setSort] = useState('recent');
@@ -189,6 +193,30 @@ export function Library({ songs: songsProp, tags: knownTags = [], onOpen, onAdd,
             <input ref={fileRef} type="file" accept="application/json,.json" hidden onChange={pickFile} />
           </div>
           <p className="lib-backup-hint">Save your songbook to a file, or restore from one. Importing merges songs into your library.</p>
+
+          {syncConfigured && (
+            <div className="lib-sync">
+              {!syncOn ? (
+                <>
+                  <Button variant="secondary" size="sm" iconLeft={<Icon n="upload" s={16} />} onClick={onConnectSync}>Sync with Google Drive</Button>
+                  <p className="lib-backup-hint">Keep your songbook in sync across your devices. Your songs are saved to your own Google Drive — no one else can see them.</p>
+                </>
+              ) : (
+                <>
+                  <div className="lib-sync-row">
+                    <span className={'lib-sync-status lib-sync-status--' + syncStatus}>
+                      <span className="lib-sync-dot" aria-hidden="true"></span>
+                      Google Drive · {SYNC_LABEL[syncStatus] || 'Connected'}
+                    </span>
+                    <div className="lib-sync-actions">
+                      <Button variant="quiet" size="sm" onClick={onSyncNow}>Sync now</Button>
+                      <Button variant="quiet" size="sm" onClick={onDisconnectSync}>Disconnect</Button>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>

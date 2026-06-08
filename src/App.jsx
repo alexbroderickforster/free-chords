@@ -9,8 +9,9 @@ import { AddImport } from './screens/AddImport.jsx';
 import { TunerView } from './screens/TunerView.jsx';
 import { SONGS, ALL_TAGS } from './data/songs.js';
 import { nextStatus } from './lib/music.js';
-import { loadSongs, saveSongs, loadTags, saveTags, loadTheme, saveTheme, loadPrefs, savePrefs } from './lib/storage.js';
+import { loadSongs, saveSongs, loadTags, saveTags, loadTheme, saveTheme, loadPrefs, savePrefs, loadDeletions, saveDeletions, loadSyncOptIn, saveSyncOptIn } from './lib/storage.js';
 import { exportSongbook, parseBackup } from './lib/backup.js';
+import { isConfigured as syncConfigured, fullSync, push as syncPush, disconnect as syncDisconnect } from './lib/sync.js';
 import './styles/app.css';
 
 const slugify = (s) =>
@@ -27,16 +28,20 @@ export function App() {
   const [songs, setSongs] = useState(() => loadSongs(SONGS));
   const [knownTags, setKnownTags] = useState(() => loadTags(ALL_TAGS));
   const [prefs, setPrefs] = useState(() => loadPrefs());
+  const [deletions, setDeletions] = useState(() => loadDeletions());
+  const [syncOn, setSyncOn] = useState(() => loadSyncOptIn());
+  const [syncStatus, setSyncStatus] = useState('idle'); // idle | syncing | synced | offline | error
 
   useEffect(() => {
     document.documentElement.dataset.theme = dark ? 'dark' : 'light';
     saveTheme(dark);
   }, [dark]);
 
-  // Persist the songbook, known-tags list, and playback prefs whenever they change.
+  // Persist the songbook, known-tags list, playback prefs, and deletions.
   useEffect(() => { saveSongs(songs); }, [songs]);
   useEffect(() => { saveTags(knownTags); }, [knownTags]);
   useEffect(() => { savePrefs(prefs); }, [prefs]);
+  useEffect(() => { saveDeletions(deletions); }, [deletions]);
 
   // Register any tag that appears on a song into the known-tags list.
   useEffect(() => {
@@ -70,9 +75,11 @@ export function App() {
   const goArtist = (artist) => { setSong(null); setFocus(false); setEditing(false); setArtistFilter(artist); setTab('songs'); };
 
   // Mutable songbook: star + learning-status toggles reflect everywhere.
+  // Every edit stamps updatedAt so sync can resolve which copy is newest.
   const updateSong = (id, patch) => {
-    setSongs((prev) => prev.map((s) => (s.id === id ? { ...s, ...patch } : s)));
-    setSong((prev) => (prev && prev.id === id ? { ...prev, ...patch } : prev));
+    const stamped = { ...patch, updatedAt: Date.now() };
+    setSongs((prev) => prev.map((s) => (s.id === id ? { ...s, ...stamped } : s)));
+    setSong((prev) => (prev && prev.id === id ? { ...prev, ...stamped } : prev));
   };
   const toggleStar = (id) => { const s = songs.find((x) => x.id === id); updateSong(id, { starred: !(s && s.starred) }); };
   const cycleStatus = (id) => { const s = songs.find((x) => x.id === id); updateSong(id, { status: nextStatus(s && s.status) }); };
@@ -84,10 +91,71 @@ export function App() {
   const savePref = (id, patch) =>
     setPrefs((prev) => ({ ...prev, [id]: { ...PREF_DEFAULTS, ...(prev[id] || {}), ...patch } }));
 
+  // ---- Google Drive sync (opt-in, offline-first) ----
+  const buildDoc = () => ({ version: 1, updatedAt: Date.now(), songs, tags: knownTags, prefs, deletions });
+  const adoptDoc = (doc) => {
+    if (!doc) return;
+    if (Array.isArray(doc.songs)) setSongs(doc.songs);
+    if (Array.isArray(doc.tags)) setKnownTags(doc.tags);
+    if (doc.prefs && typeof doc.prefs === 'object') setPrefs(doc.prefs);
+    if (doc.deletions && typeof doc.deletions === 'object') setDeletions(doc.deletions);
+  };
+  const connectSync = async () => {
+    try {
+      setSyncStatus('syncing');
+      const merged = await fullSync(buildDoc(), true);
+      adoptDoc(merged);
+      setSyncOn(true); saveSyncOptIn(true);
+      setSyncStatus('synced'); setToast('Synced with Google Drive');
+    } catch (e) { setSyncStatus('error'); setToast('Couldn’t connect to Google Drive'); }
+  };
+  const syncNow = async (interactive = false) => {
+    if (!syncOn && !interactive) return;
+    if (typeof navigator !== 'undefined' && !navigator.onLine) { setSyncStatus('offline'); return; }
+    try {
+      setSyncStatus('syncing');
+      const merged = await fullSync(buildDoc(), interactive);
+      adoptDoc(merged);
+      setSyncStatus('synced');
+    } catch (e) { setSyncStatus('error'); }
+  };
+  const disconnectSync = () => {
+    syncDisconnect(); setSyncOn(false); saveSyncOptIn(false); setSyncStatus('idle');
+    setToast('Disconnected from Google Drive');
+  };
+
+  // Resume: if previously connected, attempt a best-effort silent sync on load.
+  useEffect(() => {
+    if (syncOn && syncConfigured()) syncNow(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Debounced push of local changes once connected (no UI; ignore failures).
+  useEffect(() => {
+    if (!syncOn) return;
+    if (typeof navigator !== 'undefined' && !navigator.onLine) { setSyncStatus('offline'); return; }
+    const t = setTimeout(() => {
+      syncPush(buildDoc()).then(() => setSyncStatus('synced')).catch(() => setSyncStatus('error'));
+    }, 1500);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [songs, knownTags, prefs, deletions, syncOn]);
+
+  // Re-sync when the tab regains focus or the network returns.
+  useEffect(() => {
+    if (!syncOn) return;
+    const onWake = () => syncNow(false);
+    window.addEventListener('focus', onWake);
+    window.addEventListener('online', onWake);
+    return () => { window.removeEventListener('focus', onWake); window.removeEventListener('online', onWake); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [syncOn]);
+
   // Editing a saved song.
   const saveEdit = (id, patch) => { updateSong(id, patch); setEditing(false); setToast('Saved changes'); };
   const deleteSong = (id) => {
     setSongs((prev) => prev.filter((s) => s.id !== id));
+    setDeletions((prev) => ({ ...prev, [id]: Date.now() })); // tombstone so the delete syncs
     setEditing(false); setSong(null); setFocus(false); setTab('songs');
     setToast('Deleted song');
   };
@@ -103,9 +171,10 @@ export function App() {
     if (!file) return;
     try {
       const { songs: incoming, tags: incomingTags } = parseBackup(await file.text());
+      const now = Date.now();
       setSongs((prev) => {
         const byId = new Map(prev.map((s) => [s.id, s]));
-        incoming.forEach((s) => byId.set(s.id, s));
+        incoming.forEach((s) => byId.set(s.id, { ...s, updatedAt: s.updatedAt || now }));
         return Array.from(byId.values());
       });
       setKnownTags((prev) => {
@@ -126,7 +195,7 @@ export function App() {
       const ids = new Set(prev.map((s) => s.id));
       let base = slugify(draft.title), id = base, n = 2;
       while (ids.has(id)) id = `${base}-${n++}`;
-      return [{ ...draft, id }, ...prev];
+      return [{ ...draft, id, updatedAt: Date.now() }, ...prev];
     });
     setToast('Saved to library');
     setTab('songs');
@@ -153,7 +222,8 @@ export function App() {
     ? <SongView song={song} onBack={closeSong} onArtist={goArtist} dark={dark} onToggleTheme={toggleTheme} focusMode={focus} onToggleFocus={() => setFocus((f) => !f)} onToggleStar={toggleStar} onCycleStatus={cycleStatus} onUpdateTags={updateTags} onEdit={() => setEditing(true)} prefs={prefsFor(song.id)} onSavePref={(patch) => savePref(song.id, patch)} onCapo={(v) => updateSong(song.id, { capo: v })} />
     : (
       <main className="app-body">
-        {tab === 'songs' && <Library songs={songs} tags={knownTags} onOpen={openSong} onAdd={() => setTab('add')} artistFilter={artistFilter} onClearArtist={() => setArtistFilter(null)} onArtist={goArtist} onToggleStar={toggleStar} onCycleStatus={cycleStatus} onExport={exportData} onImport={importData} />}
+        {tab === 'songs' && <Library songs={songs} tags={knownTags} onOpen={openSong} onAdd={() => setTab('add')} artistFilter={artistFilter} onClearArtist={() => setArtistFilter(null)} onArtist={goArtist} onToggleStar={toggleStar} onCycleStatus={cycleStatus} onExport={exportData} onImport={importData}
+          syncConfigured={syncConfigured()} syncOn={syncOn} syncStatus={syncStatus} onConnectSync={connectSync} onSyncNow={() => syncNow(true)} onDisconnectSync={disconnectSync} />}
         {tab === 'add' && <AddImport onBack={() => setTab('songs')} knownTags={knownTags} onSave={addSong} />}
         {tab === 'tuner' && <TunerView />}
       </main>

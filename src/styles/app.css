@@ -145,6 +145,18 @@ body {
 .lib-backup-actions { display: flex; flex-wrap: wrap; gap: 10px; }
 .lib-backup-hint { color: var(--ink-faint); font-size: var(--text-sm); line-height: 1.5; margin: 12px 2px 0; max-width: 48ch; }
 
+/* Google Drive sync */
+.lib-sync { margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--line-soft); }
+.lib-sync-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.lib-sync-actions { display: flex; gap: 4px; }
+.lib-sync-status { display: inline-flex; align-items: center; gap: 8px; font-size: var(--text-sm); font-weight: 600; color: var(--ink-soft); }
+.lib-sync-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ink-faint); flex: none; }
+.lib-sync-status--synced .lib-sync-dot { background: var(--good); }
+.lib-sync-status--syncing .lib-sync-dot { background: var(--accent); }
+.lib-sync-status--offline .lib-sync-dot { background: var(--ink-faint); }
+.lib-sync-status--error .lib-sync-dot { background: var(--danger); }
+.lib-sync-status--error { color: var(--danger); }
+
 /* ---- Add / import ---- */
 .add-fields { display: flex; gap: 14px; margin-bottom: 16px; }
 .add-fields > * { flex: 1; min-width: 0; }

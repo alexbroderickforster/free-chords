@@ -48,3 +48,14 @@ export function loadPrefs() {
   return stored && typeof stored === 'object' ? stored : {};
 }
 export function savePrefs(prefs) { write('prefs', prefs); }
+
+// Deletion tombstones for sync: { [songId]: deletedAtEpochMs }
+export function loadDeletions() {
+  const stored = read('deletions', null);
+  return stored && typeof stored === 'object' ? stored : {};
+}
+export function saveDeletions(d) { write('deletions', d); }
+
+// Whether the user has opted into Google Drive sync on this device.
+export function loadSyncOptIn() { return read('syncOptIn', false) === true; }
+export function saveSyncOptIn(v) { write('syncOptIn', !!v); }

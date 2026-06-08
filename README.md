@@ -38,6 +38,10 @@ the first load).
 - **Warm light + low-light dark mode**, deep-indigo accent on warm paper.
 - **Installable PWA.** Add it to your home screen and it runs **fully offline**
   — the app shell and fonts are self-hosted and cached on the device.
+- **Optional Google Drive sync.** Connect your own Google Drive to keep the
+  songbook in sync across devices. It's off by default and stays offline-first;
+  your data lives in *your* Drive (a private app folder), not on any server.
+  Requires a one-time setup — see **Cross-device sync** below.
 
 ## Tech
 
@@ -71,7 +75,8 @@ npm run preview  # preview the production build
 src/
   components/   design-system primitives (Button, Card, Tag, SideNav, …) + Icon
   screens/      Library, SongView, AddImport, TunerView, Practice (parked)
-  lib/          music utilities (transpose, chord diagrams, learning status)
+  lib/          music (status), chordpro (ChordSheetJS), chords (chords-db),
+                storage (localStorage), backup (export/import), sync (Drive)
   data/         sample songbook
   styles/       design tokens + app stylesheet
 public/         brand SVGs (mark + wordmark)
@@ -87,14 +92,63 @@ song** so the layout is clear on first run; everything else — the songs you ad
 favorites, learning status, tags, per-song playback prefs, and theme — is stored
 **only in your own browser** (`localStorage`). Nothing you add is uploaded or
 shared, and every visitor to a hosted copy gets their own private songbook.
-Planned next steps:
-
-- Sync the songbook across devices automatically (a backend / cloud sync).
+For cross-device use there's **optional** Google Drive sync (see below); it's
+off until you set it up, and the app stays fully usable and offline without it.
 
 To **install on a phone or tablet**, the app needs to be served over HTTPS
 (install/offline is allowed on `https://…` or `localhost`). Any free static
 host — Netlify, Vercel, GitHub Pages — works; build with `npm run build` and
 deploy the `dist/` folder.
+
+## Cross-device sync (optional)
+
+Sync keeps your songbook the same on your phone and laptop. It's **offline-first**
+(your browser stays the working copy; Drive is just where it backs up and
+reconciles) and **private** — your songs are saved to a hidden per-app folder in
+*your own* Google Drive. The app never sees other people's data, and no server is
+involved.
+
+It's hidden until a Google OAuth **client ID** is provided at build time via the
+`VITE_GOOGLE_CLIENT_ID` environment variable. To set it up:
+
+### 1. Create the OAuth client ID
+
+1. Go to the [Google Cloud Console](https://console.cloud.google.com/) and
+   create a project (any name, e.g. "FreeChords").
+2. **APIs & Services → Library →** search **Google Drive API** → **Enable**.
+3. **APIs & Services → OAuth consent screen:** choose **External**, fill in the
+   app name and your email. Add the scope
+   `https://www.googleapis.com/auth/drive.appdata`. Add yourself (and anyone
+   else who'll use it) as a **Test user**. You can leave it in **Testing** mode —
+   no Google verification needed for personal use.
+4. **APIs & Services → Credentials → Create Credentials → OAuth client ID →
+   Web application.** Under **Authorized JavaScript origins** add the origins
+   you'll run from:
+   - `http://localhost:5173` (local dev)
+   - your hosted origin, e.g. `https://alexbroderickforster.github.io`
+   (origins are scheme + host only — no path). Create it and copy the **Client ID**
+   (looks like `1234-abcd.apps.googleusercontent.com`).
+
+### 2. Use it locally
+
+```bash
+cp .env.example .env
+# then edit .env and set VITE_GOOGLE_CLIENT_ID=<your client id>
+npm run dev
+```
+
+The **Sync with Google Drive** button appears in the Songs page (Backup section).
+
+### 3. Use it on the deployed site
+
+The build reads `VITE_GOOGLE_CLIENT_ID` from a repo **variable**. In the GitHub
+repo: **Settings → Secrets and variables → Actions → Variables → New repository
+variable**, name `VITE_GOOGLE_CLIENT_ID`, value = your client ID. The next deploy
+will include sync. (The client ID is a public browser identifier, not a secret.)
+
+> **Note:** in Testing mode you may be asked to re-authorize periodically — that's
+> Google's behavior for unverified apps and is fine for personal use. Local data
+> and offline use are never affected.
 
 Contributions are welcome — see the license below.
 
