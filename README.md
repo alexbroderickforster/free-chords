@@ -63,15 +63,16 @@ public/         brand SVGs (mark + wordmark)
 
 ## Status & roadmap
 
-This is a personal app and a work in progress. The song data is currently
-sample/in-memory only — there's no persistence or real ChordPro storage yet.
-Planned next steps:
+This is a personal app and a work in progress. The songbook starts from a small
+sample set, but your changes — favorites, learning status, tags, added songs,
+and theme — now **persist in the browser via localStorage**. Planned next steps:
 
-- Persist the songbook (and per-song settings) to local storage / a backend.
+- Sync/back up the songbook beyond a single browser (export/import or a backend).
 - Real [ChordSheetJS](https://github.com/martijnversluis/ChordSheetJS) parsing
   and rendering for imported songs.
 - Self-hosted fonts and a PWA/installable build for offline use.
-- A way to add/edit full songs (not just import a snippet).
+- Editing full songs (key, capo, sections) after import, and per-song playback
+  preferences (font size, transpose) that stick.
 
 Contributions are welcome — see the license below.
 
