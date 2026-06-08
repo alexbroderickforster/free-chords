@@ -23,6 +23,8 @@ laptop or a tablet on a music stand.
   by song) to move it between browsers or share it.
 - **Add / import.** Paste raw chords copied from a webpage and clean them into
   ChordPro, with a live rendered preview and detected-chord chips.
+- **Edit.** Edit any saved song — title, artist, key, capo, tags, and the
+  ChordPro source directly — with a live preview, or delete it.
 - **Tuner.** Reference tones for each string plus a microphone "Listen" mode
   with live pitch detection and an in-tune meter.
 - **Responsive.** A left sidebar on desktop/web, a bottom tab bar on mobile.
@@ -73,8 +75,7 @@ and theme — now **persist in the browser via localStorage**. Planned next step
 
 - Sync the songbook across devices automatically (a backend / cloud sync).
 - Self-hosted fonts and a PWA/installable build for offline use.
-- Editing full songs (key, capo, sections) after import, and per-song playback
-  preferences (font size, transpose) that stick.
+- Per-song playback preferences (font size, transpose) that stick.
 
 Contributions are welcome — see the license below.
 

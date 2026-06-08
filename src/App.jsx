@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { TabBar, SideNav, IconButton, Button, Icon } from './components/index.js';
 import { SongView } from './screens/SongView.jsx';
+import { SongEdit } from './screens/SongEdit.jsx';
 import { Library } from './screens/Library.jsx';
 import { AddImport } from './screens/AddImport.jsx';
 import { TunerView } from './screens/TunerView.jsx';
@@ -22,6 +23,7 @@ export function App() {
   const [toast, setToast] = useState('');
   const [artistFilter, setArtistFilter] = useState(null);
   const [focus, setFocus] = useState(false);
+  const [editing, setEditing] = useState(false);
   const [songs, setSongs] = useState(() => loadSongs(SONGS));
   const [knownTags, setKnownTags] = useState(() => loadTags(ALL_TAGS));
 
@@ -60,10 +62,10 @@ export function App() {
   }, [focus]);
 
   const openSong = (s) => setSong(s);
-  const closeSong = () => { setSong(null); setFocus(false); };
-  const goTab = (t) => { setSong(null); setFocus(false); setTab(t); };
+  const closeSong = () => { setSong(null); setFocus(false); setEditing(false); };
+  const goTab = (t) => { setSong(null); setFocus(false); setEditing(false); setTab(t); };
   const toggleTheme = () => setDark((d) => !d);
-  const goArtist = (artist) => { setSong(null); setFocus(false); setArtistFilter(artist); setTab('songs'); };
+  const goArtist = (artist) => { setSong(null); setFocus(false); setEditing(false); setArtistFilter(artist); setTab('songs'); };
 
   // Mutable songbook: star + learning-status toggles reflect everywhere.
   const updateSong = (id, patch) => {
@@ -73,6 +75,14 @@ export function App() {
   const toggleStar = (id) => { const s = songs.find((x) => x.id === id); updateSong(id, { starred: !(s && s.starred) }); };
   const cycleStatus = (id) => { const s = songs.find((x) => x.id === id); updateSong(id, { status: nextStatus(s && s.status) }); };
   const updateTags = (id, tags) => updateSong(id, { tags });
+
+  // Editing a saved song.
+  const saveEdit = (id, patch) => { updateSong(id, patch); setEditing(false); setToast('Saved changes'); };
+  const deleteSong = (id) => {
+    setSongs((prev) => prev.filter((s) => s.id !== id));
+    setEditing(false); setSong(null); setFocus(false); setTab('songs');
+    setToast('Deleted song');
+  };
 
   // Export the whole songbook to a JSON file the user can keep or share.
   const exportData = () => {
@@ -128,8 +138,10 @@ export function App() {
     </>
   );
 
-  const screen = song
-    ? <SongView song={song} onBack={closeSong} onArtist={goArtist} dark={dark} onToggleTheme={toggleTheme} focusMode={focus} onToggleFocus={() => setFocus((f) => !f)} onToggleStar={toggleStar} onCycleStatus={cycleStatus} onUpdateTags={updateTags} />
+  const screen = (song && editing)
+    ? <SongEdit song={song} knownTags={knownTags} onSave={saveEdit} onCancel={() => setEditing(false)} onDelete={deleteSong} />
+    : song
+    ? <SongView song={song} onBack={closeSong} onArtist={goArtist} dark={dark} onToggleTheme={toggleTheme} focusMode={focus} onToggleFocus={() => setFocus((f) => !f)} onToggleStar={toggleStar} onCycleStatus={cycleStatus} onUpdateTags={updateTags} onEdit={() => setEditing(true)} />
     : (
       <main className="app-body">
         {tab === 'songs' && <Library songs={songs} tags={knownTags} onOpen={openSong} onAdd={() => setTab('add')} artistFilter={artistFilter} onClearArtist={() => setArtistFilter(null)} onArtist={goArtist} onToggleStar={toggleStar} onCycleStatus={cycleStatus} onExport={exportData} onImport={importData} />}
@@ -166,7 +178,9 @@ export function App() {
           </header>
         )}
 
-        {song ? <div className="app-body app-body--song">{screen}</div> : screen}
+        {song && !editing ? <div className="app-body app-body--song">{screen}</div>
+          : song && editing ? <div className="app-body">{screen}</div>
+          : screen}
 
         {!song && <TabBar className="app-tabbar" items={navItems} value={tab} onChange={setTab} />}
       </div>

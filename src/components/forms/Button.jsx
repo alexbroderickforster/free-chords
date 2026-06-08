@@ -35,6 +35,9 @@ const CSS = `
 .fc-btn--quiet{ background: transparent; color: var(--ink-soft); }
 .fc-btn--quiet:hover:not([disabled]){ color: var(--accent); }
 
+.fc-btn--danger{ background: var(--danger); color: var(--ink-on-accent); }
+.fc-btn--danger:hover:not([disabled]){ filter: brightness(0.94); }
+
 .fc-btn--sm{ min-height: 36px; padding: 0 var(--space-4); font-size: var(--text-sm); border-radius: var(--radius-sm); }
 .fc-btn--lg{ min-height: 52px; padding: 0 var(--space-6); font-size: var(--text-md); }
 .fc-btn--block{ width: 100%; }

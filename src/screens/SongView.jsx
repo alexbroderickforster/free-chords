@@ -19,7 +19,7 @@ function ChordLine({ segments }) {
   );
 }
 
-export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMode, onToggleFocus, onToggleStar, onCycleStatus, onUpdateTags }) {
+export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMode, onToggleFocus, onToggleStar, onCycleStatus, onUpdateTags, onEdit }) {
   const [transpose, setTranspose] = useState(0);
   const [capo, setCapo] = useState(song.capo || 0);
   const [fontSize, setFontSize] = useState(28);
@@ -170,6 +170,9 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
           <button className="sv-ic" aria-label="Smaller text" onClick={() => setFontSize((v) => Math.max(20, v - 2))}><Icon n="a-arrow-down" s={21} /></button>
           <button className="sv-ic" aria-label="Larger text" onClick={() => setFontSize((v) => Math.min(46, v + 2))}><Icon n="a-arrow-up" s={21} /></button>
           <button className={'sv-ic' + (tune ? ' is-on' : '')} aria-label="Transpose & capo" onClick={() => setTune((s) => !s)}><Icon n="sliders-horizontal" s={20} /></button>
+          {onEdit && (
+            <button className="sv-ic" aria-label="Edit song" onClick={onEdit}><Icon n="pencil" s={19} /></button>
+          )}
           {onToggleFocus && (
             <button className="sv-ic sv-ic--focus" aria-label={focusMode ? 'Exit full screen (Esc)' : 'Full-screen play mode'} title={focusMode ? 'Exit full screen (Esc)' : 'Full-screen play mode'} onClick={onToggleFocus}><Icon n={focusMode ? 'minimize-2' : 'maximize-2'} s={20} /></button>
           )}

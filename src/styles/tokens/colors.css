@@ -73,6 +73,8 @@
   --good:          var(--sage-600);
   --good-soft:     var(--sage-100);
 
+  --danger:        #B0453C;          /* destructive actions  */
+
   --star:          var(--iris-600);  /* mastered / favorite  */
 
   /* warm, low, paper-soft shadows */
@@ -108,6 +110,8 @@
 
   --good:          var(--moss-400);
   --good-soft:     #25301F;
+
+  --danger:        #D98C84;
 
   --star:          var(--iris-glow-400);
 

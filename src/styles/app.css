@@ -119,6 +119,14 @@ body {
 .lib-rowtag:hover { color: var(--accent); }
 .lib-rowtag.is-on { background: var(--accent-soft); color: var(--accent); border-color: color-mix(in oklab, var(--accent) 30%, transparent); }
 
+/* ---- Edit song ---- */
+.edit-metarow { display: flex; align-items: flex-end; gap: 16px; margin-bottom: 16px; flex-wrap: wrap; }
+.edit-key { flex: 1; min-width: 160px; }
+.edit-emptyprev { color: var(--ink-faint); font-size: var(--text-sm); }
+.edit-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--line); flex-wrap: wrap; }
+.edit-foot-r { display: flex; gap: 10px; margin-left: auto; }
+.edit-confirm { display: inline-flex; align-items: center; gap: 8px; color: var(--ink); font-size: var(--text-sm); font-weight: 600; }
+
 /* ---- Library backup (export / import) ---- */
 .lib-backup { margin-top: 32px; padding-top: 22px; border-top: 1px solid var(--line); }
 .lib-backup-lbl { display: block; margin: 0 2px 12px; }
