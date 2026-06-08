@@ -19,6 +19,8 @@ the first load).
   and **capo** controls, adjustable font size, a **hide-chords** toggle for
   lyrics-only practice, and **hover (or tap) any chord** to see its fretboard
   diagram. A full-screen mode (desktop) goes edge-to-edge — press **Esc** to leave.
+  Each song **remembers its own** transpose, font size, hide-chords, and
+  auto-scroll speed.
 - **Library / songbook.** Searchable, sortable (Recent / Title / Artist),
   group-by-artist, and tag-filterable. Each song shows its key, when it was
   added, a favorite **★**, and a learning status (**To learn → Learning →
@@ -83,7 +85,6 @@ sample set, but your changes — favorites, learning status, tags, added songs,
 and theme — now **persist in the browser via localStorage**. Planned next steps:
 
 - Sync the songbook across devices automatically (a backend / cloud sync).
-- Per-song playback preferences (font size, transpose) that stick.
 
 To **install on a phone or tablet**, the app needs to be served over HTTPS
 (install/offline is allowed on `https://…` or `localhost`). Any free static

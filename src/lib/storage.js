@@ -36,3 +36,11 @@ export function saveTags(tags) { write('tags', tags); }
 
 export function loadTheme() { return read('theme', 'light') === 'dark'; }
 export function saveTheme(dark) { write('theme', dark ? 'dark' : 'light'); }
+
+// Per-song playback preferences, keyed by song id:
+// { [id]: { transpose, fontSize, hideChords, speed } }
+export function loadPrefs() {
+  const stored = read('prefs', null);
+  return stored && typeof stored === 'object' ? stored : {};
+}
+export function savePrefs(prefs) { write('prefs', prefs); }

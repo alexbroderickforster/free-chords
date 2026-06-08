@@ -9,7 +9,7 @@ import { AddImport } from './screens/AddImport.jsx';
 import { TunerView } from './screens/TunerView.jsx';
 import { SONGS, ALL_TAGS } from './data/songs.js';
 import { nextStatus } from './lib/music.js';
-import { loadSongs, saveSongs, loadTags, saveTags, loadTheme, saveTheme } from './lib/storage.js';
+import { loadSongs, saveSongs, loadTags, saveTags, loadTheme, saveTheme, loadPrefs, savePrefs } from './lib/storage.js';
 import { exportSongbook, parseBackup } from './lib/backup.js';
 import './styles/app.css';
 
@@ -26,15 +26,17 @@ export function App() {
   const [editing, setEditing] = useState(false);
   const [songs, setSongs] = useState(() => loadSongs(SONGS));
   const [knownTags, setKnownTags] = useState(() => loadTags(ALL_TAGS));
+  const [prefs, setPrefs] = useState(() => loadPrefs());
 
   useEffect(() => {
     document.documentElement.dataset.theme = dark ? 'dark' : 'light';
     saveTheme(dark);
   }, [dark]);
 
-  // Persist the songbook and the known-tags list whenever they change.
+  // Persist the songbook, known-tags list, and playback prefs whenever they change.
   useEffect(() => { saveSongs(songs); }, [songs]);
   useEffect(() => { saveTags(knownTags); }, [knownTags]);
+  useEffect(() => { savePrefs(prefs); }, [prefs]);
 
   // Register any tag that appears on a song into the known-tags list.
   useEffect(() => {
@@ -75,6 +77,12 @@ export function App() {
   const toggleStar = (id) => { const s = songs.find((x) => x.id === id); updateSong(id, { starred: !(s && s.starred) }); };
   const cycleStatus = (id) => { const s = songs.find((x) => x.id === id); updateSong(id, { status: nextStatus(s && s.status) }); };
   const updateTags = (id, tags) => updateSong(id, { tags });
+
+  // Per-song playback preferences (defaults merged with any saved overrides).
+  const PREF_DEFAULTS = { transpose: 0, fontSize: 28, hideChords: false, speed: 4 };
+  const prefsFor = (id) => ({ ...PREF_DEFAULTS, ...(prefs[id] || {}) });
+  const savePref = (id, patch) =>
+    setPrefs((prev) => ({ ...prev, [id]: { ...PREF_DEFAULTS, ...(prev[id] || {}), ...patch } }));
 
   // Editing a saved song.
   const saveEdit = (id, patch) => { updateSong(id, patch); setEditing(false); setToast('Saved changes'); };
@@ -142,7 +150,7 @@ export function App() {
   const screen = (song && editing)
     ? <SongEdit song={song} knownTags={knownTags} onSave={saveEdit} onCancel={() => setEditing(false)} onDelete={deleteSong} />
     : song
-    ? <SongView song={song} onBack={closeSong} onArtist={goArtist} dark={dark} onToggleTheme={toggleTheme} focusMode={focus} onToggleFocus={() => setFocus((f) => !f)} onToggleStar={toggleStar} onCycleStatus={cycleStatus} onUpdateTags={updateTags} onEdit={() => setEditing(true)} />
+    ? <SongView song={song} onBack={closeSong} onArtist={goArtist} dark={dark} onToggleTheme={toggleTheme} focusMode={focus} onToggleFocus={() => setFocus((f) => !f)} onToggleStar={toggleStar} onCycleStatus={cycleStatus} onUpdateTags={updateTags} onEdit={() => setEditing(true)} prefs={prefsFor(song.id)} onSavePref={(patch) => savePref(song.id, patch)} onCapo={(v) => updateSong(song.id, { capo: v })} />
     : (
       <main className="app-body">
         {tab === 'songs' && <Library songs={songs} tags={knownTags} onOpen={openSong} onAdd={() => setTab('add')} artistFilter={artistFilter} onClearArtist={() => setArtistFilter(null)} onArtist={goArtist} onToggleStar={toggleStar} onCycleStatus={cycleStatus} onExport={exportData} onImport={importData} />}

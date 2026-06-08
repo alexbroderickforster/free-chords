@@ -19,17 +19,35 @@ function ChordLine({ segments }) {
   );
 }
 
-export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMode, onToggleFocus, onToggleStar, onCycleStatus, onUpdateTags, onEdit }) {
-  const [transpose, setTranspose] = useState(0);
+export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMode, onToggleFocus, onToggleStar, onCycleStatus, onUpdateTags, onEdit, prefs = {}, onSavePref, onCapo }) {
+  const [transpose, setTranspose] = useState(prefs.transpose ?? 0);
   const [capo, setCapo] = useState(song.capo || 0);
-  const [fontSize, setFontSize] = useState(28);
+  const [fontSize, setFontSize] = useState(prefs.fontSize ?? 28);
   const [playing, setPlaying] = useState(false);
-  const [speed, setSpeed] = useState(4);
+  const [speed, setSpeed] = useState(prefs.speed ?? 4);
   const [tune, setTune] = useState(false);
-  const [hideChords, setHideChords] = useState(false);
+  const [hideChords, setHideChords] = useState(prefs.hideChords ?? false);
   const [tagDraft, setTagDraft] = useState('');
   const [tagEditing, setTagEditing] = useState(false);
-  useEffect(() => { setTagEditing(false); setTagDraft(''); setCapo(song.capo || 0); setTranspose(0); }, [song.id]);
+  // Re-sync playback state from the song's saved prefs when the song changes.
+  useEffect(() => {
+    setTagEditing(false); setTagDraft('');
+    setCapo(song.capo || 0);
+    setTranspose(prefs.transpose ?? 0);
+    setFontSize(prefs.fontSize ?? 28);
+    setHideChords(prefs.hideChords ?? false);
+    setSpeed(prefs.speed ?? 4);
+    setPlaying(false); setTune(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [song.id]);
+
+  // Persisting setters: update local state and save the per-song pref.
+  const persist = (patch) => onSavePref && onSavePref(patch);
+  const changeTranspose = (v) => { setTranspose(v); persist({ transpose: v }); };
+  const changeCapo = (v) => { setCapo(v); onCapo && onCapo(v); };
+  const changeFont = (delta) => { const n = Math.max(20, Math.min(46, fontSize + delta)); setFontSize(n); persist({ fontSize: n }); };
+  const toggleHideChords = () => { const v = !hideChords; setHideChords(v); persist({ hideChords: v }); };
+  const changeSpeed = (delta) => { const n = Math.max(1, Math.min(12, speed + delta)); setSpeed(n); persist({ speed: n }); };
 
   // Tags live on the song (persisted via the app's songbook state).
   const tags = song.tags || [];
@@ -166,9 +184,9 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
           </div>
         </div>
         <div className="sv-actions">
-          <button className={'sv-ic' + (hideChords ? ' is-on' : '')} aria-label={hideChords ? 'Show chords' : 'Hide chords'} onClick={() => setHideChords((s) => !s)}><Icon n="music" s={20} /></button>
-          <button className="sv-ic" aria-label="Smaller text" onClick={() => setFontSize((v) => Math.max(20, v - 2))}><Icon n="a-arrow-down" s={21} /></button>
-          <button className="sv-ic" aria-label="Larger text" onClick={() => setFontSize((v) => Math.min(46, v + 2))}><Icon n="a-arrow-up" s={21} /></button>
+          <button className={'sv-ic' + (hideChords ? ' is-on' : '')} aria-label={hideChords ? 'Show chords' : 'Hide chords'} onClick={toggleHideChords}><Icon n="music" s={20} /></button>
+          <button className="sv-ic" aria-label="Smaller text" onClick={() => changeFont(-2)}><Icon n="a-arrow-down" s={21} /></button>
+          <button className="sv-ic" aria-label="Larger text" onClick={() => changeFont(2)}><Icon n="a-arrow-up" s={21} /></button>
           <button className={'sv-ic' + (tune ? ' is-on' : '')} aria-label="Transpose & capo" onClick={() => setTune((s) => !s)}><Icon n="sliders-horizontal" s={20} /></button>
           {onEdit && (
             <button className="sv-ic" aria-label="Edit song" onClick={onEdit}><Icon n="pencil" s={19} /></button>
@@ -180,8 +198,8 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
         </div>
         {tune && (
           <div className="sv-tune">
-            <Stepper label="Transpose" value={transpose} min={-6} max={6} format={(v) => (v > 0 ? `+${v}` : String(v))} onChange={setTranspose} />
-            <Stepper label="Capo" value={capo} min={0} max={9} format={(v) => (v === 0 ? '—' : String(v))} onChange={setCapo} />
+            <Stepper label="Transpose" value={transpose} min={-6} max={6} format={(v) => (v > 0 ? `+${v}` : String(v))} onChange={changeTranspose} />
+            <Stepper label="Capo" value={capo} min={0} max={9} format={(v) => (v === 0 ? '—' : String(v))} onChange={changeCapo} />
           </div>
         )}
       </header>
@@ -204,9 +222,9 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
         <button className="sv-ghost" aria-label="Back to start" onClick={() => scRef.current && scRef.current.scrollTo({ top: 0, behavior: 'smooth' })}><Icon n="rotate-ccw" s={20} /></button>
         <button className="sv-round" aria-label="Play or pause auto-scroll" onClick={() => setPlaying((p) => !p)}><Icon n={playing ? 'pause' : 'play'} s={26} /></button>
         <div className="sv-speed">
-          <button className="sv-sbtn" aria-label="Slower" onClick={() => setSpeed((v) => Math.max(1, v - 1))}>−</button>
+          <button className="sv-sbtn" aria-label="Slower" onClick={() => changeSpeed(-1)}>−</button>
           <div className="sv-sval"><div className="sv-snum">{speed}</div><div className="sv-slbl">Speed</div></div>
-          <button className="sv-sbtn" aria-label="Faster" onClick={() => setSpeed((v) => Math.min(12, v + 1))}>+</button>
+          <button className="sv-sbtn" aria-label="Faster" onClick={() => changeSpeed(1)}>+</button>
         </div>
       </div>
 
