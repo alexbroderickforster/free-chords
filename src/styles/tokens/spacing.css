@@ -1,0 +1,58 @@
+/* ============================================================
+   FreeChords — Spacing, radii, shadows, motion
+   Generous, calm rhythm. 4px base.
+   ============================================================ */
+
+:root {
+  /* ---- Spacing scale (4px base) ---- */
+  --space-0:   0;
+  --space-1:   0.25rem;   /* 4   */
+  --space-2:   0.5rem;    /* 8   */
+  --space-3:   0.75rem;   /* 12  */
+  --space-4:   1rem;      /* 16  */
+  --space-5:   1.5rem;    /* 24  */
+  --space-6:   2rem;      /* 32  */
+  --space-7:   3rem;      /* 48  */
+  --space-8:   4rem;      /* 64  */
+  --space-9:   6rem;      /* 96  */
+
+  /* page gutters & reading measure */
+  --gutter:        var(--space-5);
+  --gutter-wide:   var(--space-7);
+  --measure:       38rem;   /* comfortable text column         */
+  --measure-song:  44rem;   /* song sheet column               */
+
+  /* ---- Radii ---- */
+  --radius-xs:   4px;
+  --radius-sm:   8px;
+  --radius-md:   12px;   /* default control / chip            */
+  --radius-lg:   16px;   /* cards                             */
+  --radius-xl:   24px;   /* sheets / large panels             */
+  --radius-pill: 999px;
+
+  /* ---- Shadows — warm, low, paper-soft ---- */
+  --shadow-xs: 0 1px 2px rgb(var(--shadow-color) / 0.06);
+  --shadow-sm: 0 1px 2px rgb(var(--shadow-color) / 0.05),
+               0 2px 6px rgb(var(--shadow-color) / 0.05);
+  --shadow-md: 0 2px 4px rgb(var(--shadow-color) / 0.05),
+               0 8px 20px rgb(var(--shadow-color) / 0.07);
+  --shadow-lg: 0 4px 8px rgb(var(--shadow-color) / 0.06),
+               0 18px 40px rgb(var(--shadow-color) / 0.10);
+  --shadow-inset: inset 0 1px 2px rgb(var(--shadow-color) / 0.06);
+
+  /* ---- Borders ---- */
+  --border-hair: 1px solid var(--line);
+  --border-soft: 1px solid var(--line-soft);
+
+  /* ---- Motion ---- */
+  --ease-out:   cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out:cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-fast:   120ms;
+  --dur-base:   200ms;
+  --dur-slow:   360ms;
+
+  /* ---- Layout constants ---- */
+  --tabbar-h:   64px;
+  --topbar-h:   56px;
+  --tap-min:    44px;   /* minimum hit target                */
+}

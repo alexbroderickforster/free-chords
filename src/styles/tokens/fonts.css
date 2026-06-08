@@ -1,0 +1,4 @@
+/* FreeChords webfonts.
+   NOTE: loaded from Google Fonts CDN rather than self-hosted binaries.
+   For an offline-capable install, vendor these as local .woff2 + @font-face. */
+@import url('https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;0,6..72,700;1,6..72,400;1,6..72,500&family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');

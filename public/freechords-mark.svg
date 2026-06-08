@@ -1,0 +1,10 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="FreeChords mark">
+  <rect width="64" height="64" rx="16" fill="#3B3A8E"></rect>
+  <g stroke="#FCFAF4" stroke-width="2.4" stroke-linecap="round">
+    <line x1="16" y1="18" x2="48" y2="18"></line>
+    <line x1="16" y1="26" x2="48" y2="26"></line>
+    <line x1="16" y1="34" x2="48" y2="34"></line>
+    <line x1="16" y1="42" x2="48" y2="42"></line>
+  </g>
+  <circle cx="38" cy="26" r="4.4" fill="#FCFAF4"></circle>
+</svg>

@@ -1,0 +1,116 @@
+/* ============================================================
+   FreeChords — Color system
+   Warm paper by day, warm low-light charcoal by night.
+   Base palette (raw) + semantic aliases that flip per theme.
+   ============================================================ */
+
+:root {
+  /* ---- Raw palette: warm paper (light) ---- */
+  --paper-50:  #FCFAF4;   /* lightest — cards / sheets       */
+  --paper-100: #F6F0E3;   /* page background                 */
+  --paper-200: #EFE7D6;   /* sunken / hover wells            */
+  --paper-300: #E5DAC4;   /* dividers on paper               */
+
+  /* ---- Raw palette: warm ink ---- */
+  --ink-900: #2A2620;     /* primary text                    */
+  --ink-700: #51493E;     /* strong secondary                */
+  --ink-500: #7C7263;     /* secondary / labels              */
+  --ink-400: #9E9484;     /* faint / placeholder             */
+
+  /* ---- Raw palette: iris (deep indigo accent) ---- */
+  --iris-700: #2C2B6E;    /* hover / chord (light)           */
+  --iris-600: #3B3A8E;    /* primary accent (light)          */
+  --iris-500: #4A48A0;
+  --iris-300: #A6A4DE;    /* tints / hover borders           */
+  --iris-100: #E7E6F4;    /* faint accent fill               */
+
+  /* ---- Raw palette: sage (good / mastered) ---- */
+  --sage-600: #5E7E58;
+  --sage-500: #6F8F69;
+  --sage-200: #CFDCC8;
+  --sage-100: #E5EDE0;
+
+  /* ---- Raw palette: warm night (dark) ---- */
+  --night-950: #15120E;
+  --night-900: #1A1611;   /* page background (dark)          */
+  --night-800: #221D17;   /* cards / sheets (dark)           */
+  --night-700: #2C261F;   /* raised / hover (dark)           */
+  --night-600: #3A322A;   /* dividers (dark)                 */
+
+  --cream-100: #ECE4D4;   /* primary text (dark)             */
+  --cream-300: #B7AD9B;   /* secondary (dark)                */
+  --cream-500: #8C8273;   /* faint (dark)                    */
+
+  --iris-glow-400: #9794E6;  /* accent (dark) — soft indigo glow */
+  --iris-glow-300: #B0AEF0;
+  --moss-400:  #8AA37F;   /* good (dark)                     */
+
+  /* ============================================================
+     Semantic aliases — LIGHT (default)
+     ============================================================ */
+  --bg:            var(--paper-100);
+  --surface:       var(--paper-50);
+  --surface-sunken:var(--paper-200);
+  --surface-hover: var(--paper-200);
+
+  --ink:           var(--ink-900);
+  --ink-soft:      var(--ink-500);
+  --ink-faint:     var(--ink-400);
+  --ink-on-accent: #FCFAF4;
+
+  --line:          #E1D6C0;
+  --line-soft:     #ECE3D2;
+
+  --accent:        var(--iris-600);
+  --accent-hover:  var(--iris-700);
+  --accent-soft:   var(--iris-100);
+  --accent-tint:   var(--iris-300);   /* hover borders        */
+  --accent-ring:   color-mix(in oklab, var(--iris-600) 40%, transparent);
+
+  --chord:         var(--iris-700);   /* inline chord color   */
+  --chord-soft:    var(--iris-300);
+
+  --good:          var(--sage-600);
+  --good-soft:     var(--sage-100);
+
+  --star:          var(--iris-600);  /* mastered / favorite  */
+
+  /* warm, low, paper-soft shadows */
+  --shadow-color:  28 22 14;          /* rgb of warm brown    */
+  --selection:     color-mix(in oklab, var(--iris-300) 55%, transparent);
+}
+
+/* ============================================================
+   Semantic aliases — DARK
+   ============================================================ */
+[data-theme="dark"] {
+  --bg:            var(--night-900);
+  --surface:       var(--night-800);
+  --surface-sunken:var(--night-700);
+  --surface-hover: var(--night-700);
+
+  --ink:           var(--cream-100);
+  --ink-soft:      var(--cream-300);
+  --ink-faint:     var(--cream-500);
+  --ink-on-accent: #1A1611;
+
+  --line:          #352D24;
+  --line-soft:     #2A241D;
+
+  --accent:        var(--iris-glow-400);
+  --accent-hover:  var(--iris-glow-300);
+  --accent-soft:   #24223E;
+  --accent-tint:   #4B4A8F;           /* hover borders        */
+  --accent-ring:   color-mix(in oklab, var(--iris-glow-400) 45%, transparent);
+
+  --chord:         var(--iris-glow-400);
+  --chord-soft:    #4B498F;
+
+  --good:          var(--moss-400);
+  --good-soft:     #25301F;
+
+  --star:          var(--iris-glow-400);
+
+  --shadow-color:  0 0 0;
+  --selection:     color-mix(in oklab, var(--iris-glow-400) 40%, transparent);
+}
