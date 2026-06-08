@@ -7,6 +7,10 @@ laptop or a tablet on a music stand.
 
 **No ads, no clutter, no upsells, anywhere, ever.**
 
+**▶ Live: <https://alexbroderickforster.github.io/free-chords/>** — open it on a
+phone or tablet and use *Add to Home Screen* to install it (works offline after
+the first load).
+
 ## Features
 
 - **Song view (play mode).** A teleprompter-style reading view: large, legible
