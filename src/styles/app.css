@@ -339,7 +339,7 @@ body {
 .tn-mline { position: absolute; left: 0; right: 0; top: 50%; height: 2px; background: var(--line); }
 .tn-tick { position: absolute; top: 12px; bottom: 12px; width: 2px; background: var(--line); transform: translateX(-50%); }
 .tn-tick.c { top: 4px; bottom: 4px; background: var(--ink-faint); }
-.tn-dot { position: absolute; top: 50%; left: 50%; width: 15px; height: 34px; border-radius: 999px; background: var(--accent); transform: translate(-50%,-50%); transition: left .08s linear, background .15s; box-shadow: var(--shadow-sm); }
+.tn-dot { position: absolute; top: 50%; left: 50%; width: 15px; height: 34px; border-radius: 999px; background: var(--accent); transform: translate(-50%,-50%); transition: left .16s cubic-bezier(0.22, 1, 0.36, 1), background .15s; box-shadow: var(--shadow-sm); }
 .tn-meter.intune .tn-dot { background: var(--good); }
 .tn-ends { display: flex; justify-content: space-between; margin-top: 4px; font-size: var(--text-xs); color: var(--ink-faint); letter-spacing: .04em; }
 .tn-cents { text-align: center; font-family: var(--font-mono); font-size: var(--text-sm); color: var(--ink-soft); margin-top: 2px; font-variant-numeric: tabular-nums; }

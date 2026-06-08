@@ -34,6 +34,7 @@ export function TunerView() {
   const root = useRef(null);
   const ac = useRef(null), stream = useRef(null), analyser = useRef(null), buf = useRef(null);
   const raf = useRef(0), last = useRef(0), liveRef = useRef(false);
+  const hist = useRef([]), smooth = useRef(0), silence = useRef(0);
 
   const audio = () => { if (!ac.current) ac.current = new (window.AudioContext || window.webkitAudioContext)(); return ac.current; };
   const $ = (sel) => root.current && root.current.querySelector(sel);
@@ -77,7 +78,21 @@ export function TunerView() {
       last.current = now;
       analyser.current.getFloatTimeDomainData(buf.current);
       const f = autoCorrelate(buf.current, ac.current.sampleRate);
-      if (f > 50 && f < 1200) setReadout(f);
+      if (f > 50 && f < 1200) {
+        silence.current = 0;
+        // Median of recent readings drops single-frame spikes / octave glitches.
+        const h = hist.current; h.push(f); if (h.length > 6) h.shift();
+        const sorted = [...h].sort((a, b) => a - b);
+        const median = sorted[Math.floor(sorted.length / 2)];
+        const prev = smooth.current;
+        // Snap on a real note change (> ~¾ semitone); otherwise ease toward it.
+        const jump = prev > 0 ? Math.abs(1200 * Math.log2(median / prev)) : Infinity;
+        smooth.current = jump > 75 ? median : prev * 0.78 + median * 0.22;
+        setReadout(smooth.current);
+      } else if (++silence.current > 8) {
+        // Sustained silence: forget history so the next note locks on cleanly.
+        hist.current = []; smooth.current = 0;
+      }
     }
     raf.current = requestAnimationFrame(loop);
   };
@@ -90,6 +105,7 @@ export function TunerView() {
       analyser.current = ctx.createAnalyser(); analyser.current.fftSize = 2048;
       buf.current = new Float32Array(analyser.current.fftSize);
       src.connect(analyser.current);
+      hist.current = []; smooth.current = 0; silence.current = 0;
       liveRef.current = true; setLive(true);
       $('.tn-status').textContent = 'Listening…';
       $('.tn-hint').textContent = 'Play a single string and let it ring.';
