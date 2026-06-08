@@ -6,22 +6,44 @@ import { SongView } from './screens/SongView.jsx';
 import { Library } from './screens/Library.jsx';
 import { AddImport } from './screens/AddImport.jsx';
 import { TunerView } from './screens/TunerView.jsx';
-import { SONGS } from './data/songs.js';
+import { SONGS, ALL_TAGS } from './data/songs.js';
 import { nextStatus } from './lib/music.js';
+import { loadSongs, saveSongs, loadTags, saveTags, loadTheme, saveTheme } from './lib/storage.js';
 import './styles/app.css';
+
+const slugify = (s) =>
+  (s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'song';
 
 export function App() {
   const [tab, setTab] = useState('songs');
   const [song, setSong] = useState(null);
-  const [dark, setDark] = useState(false);
+  const [dark, setDark] = useState(() => loadTheme());
   const [toast, setToast] = useState('');
   const [artistFilter, setArtistFilter] = useState(null);
   const [focus, setFocus] = useState(false);
-  const [songs, setSongs] = useState(SONGS);
+  const [songs, setSongs] = useState(() => loadSongs(SONGS));
+  const [knownTags, setKnownTags] = useState(() => loadTags(ALL_TAGS));
 
   useEffect(() => {
     document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+    saveTheme(dark);
   }, [dark]);
+
+  // Persist the songbook and the known-tags list whenever they change.
+  useEffect(() => { saveSongs(songs); }, [songs]);
+  useEffect(() => { saveTags(knownTags); }, [knownTags]);
+
+  // Register any tag that appears on a song into the known-tags list.
+  useEffect(() => {
+    setKnownTags((prev) => {
+      const merged = [...prev];
+      let changed = false;
+      songs.forEach((s) => (s.tags || []).forEach((t) => {
+        if (!merged.includes(t)) { merged.push(t); changed = true; }
+      }));
+      return changed ? merged : prev;
+    });
+  }, [songs]);
   useEffect(() => {
     if (!toast) return;
     const t = setTimeout(() => setToast(''), 2200);
@@ -49,6 +71,19 @@ export function App() {
   };
   const toggleStar = (id) => { const s = songs.find((x) => x.id === id); updateSong(id, { starred: !(s && s.starred) }); };
   const cycleStatus = (id) => { const s = songs.find((x) => x.id === id); updateSong(id, { status: nextStatus(s && s.status) }); };
+  const updateTags = (id, tags) => updateSong(id, { tags });
+
+  // Add a freshly-imported song to the top of the library (with a unique id).
+  const addSong = (draft) => {
+    setSongs((prev) => {
+      const ids = new Set(prev.map((s) => s.id));
+      let base = slugify(draft.title), id = base, n = 2;
+      while (ids.has(id)) id = `${base}-${n++}`;
+      return [{ ...draft, id }, ...prev];
+    });
+    setToast('Saved to library');
+    setTab('songs');
+  };
 
   const navItems = [
     { value: 'songs', label: 'Songs', icon: <Icon n="library" s={22} /> },
@@ -65,11 +100,11 @@ export function App() {
   );
 
   const screen = song
-    ? <SongView song={song} onBack={closeSong} onArtist={goArtist} dark={dark} onToggleTheme={toggleTheme} focusMode={focus} onToggleFocus={() => setFocus((f) => !f)} onToggleStar={toggleStar} onCycleStatus={cycleStatus} />
+    ? <SongView song={song} onBack={closeSong} onArtist={goArtist} dark={dark} onToggleTheme={toggleTheme} focusMode={focus} onToggleFocus={() => setFocus((f) => !f)} onToggleStar={toggleStar} onCycleStatus={cycleStatus} onUpdateTags={updateTags} />
     : (
       <main className="app-body">
-        {tab === 'songs' && <Library songs={songs} onOpen={openSong} onAdd={() => setTab('add')} artistFilter={artistFilter} onClearArtist={() => setArtistFilter(null)} onArtist={goArtist} onToggleStar={toggleStar} onCycleStatus={cycleStatus} />}
-        {tab === 'add' && <AddImport onBack={() => setTab('songs')} onSaved={() => { setToast('Saved to library'); setTab('songs'); }} />}
+        {tab === 'songs' && <Library songs={songs} tags={knownTags} onOpen={openSong} onAdd={() => setTab('add')} artistFilter={artistFilter} onClearArtist={() => setArtistFilter(null)} onArtist={goArtist} onToggleStar={toggleStar} onCycleStatus={cycleStatus} />}
+        {tab === 'add' && <AddImport onBack={() => setTab('songs')} knownTags={knownTags} onSave={addSong} />}
         {tab === 'tuner' && <TunerView />}
       </main>
     );

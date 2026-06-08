@@ -2,7 +2,6 @@
 // preview it rendered as chords-over-lyrics, and save.
 import React, { useState } from 'react';
 import { Input, Button, Card, SegmentedControl, Tag, Icon } from '../components/index.js';
-import { ALL_TAGS } from '../data/songs.js';
 
 const CHORD_RE = /^[A-G][#b]?(m|maj|min|dim|aug|sus|add)?[0-9]*(\/[A-G][#b]?)?$/;
 function isChordLine(line) {
@@ -59,6 +58,15 @@ function detectChords(cleaned) {
   return set;
 }
 
+// Turn cleaned ChordPro into the { label, lines:[segments] } section model the
+// song view renders. Blank lines separate sections (no labels on imports).
+function buildSections(cleaned) {
+  return cleaned.split(/\n{2,}/).map((block) => ({
+    label: '',
+    lines: block.split('\n').filter((l) => l.trim() !== '').map(parseLine),
+  })).filter((s) => s.lines.length);
+}
+
 const SAMPLE = `       C              G
 Slip inside the eye of your mind
        Am             E
@@ -66,7 +74,7 @@ Don't you know you might find
        F           G
 A better place to play`;
 
-export function AddImport({ onSaved, onBack }) {
+export function AddImport({ onSave, onBack, knownTags = [] }) {
   const [title, setTitle] = useState('');
   const [artist, setArtist] = useState('');
   const [tags, setTags] = useState([]);
@@ -81,7 +89,7 @@ export function AddImport({ onSaved, onBack }) {
     setTagDraft('');
   };
   const removeTag = (t) => setTags(tags.filter((x) => x !== t));
-  const suggestions = ALL_TAGS.filter((t) => !tags.some((x) => x.toLowerCase() === t.toLowerCase()));
+  const suggestions = knownTags.filter((t) => !tags.some((x) => x.toLowerCase() === t.toLowerCase()));
 
   const doClean = () => { setCleaned(cleanToChordPro(raw || SAMPLE)); setView('preview'); };
   const pasteClip = async () => {
@@ -91,6 +99,21 @@ export function AddImport({ onSaved, onBack }) {
   const reset = () => { setCleaned(''); setRaw(''); setTitle(''); setArtist(''); setTags([]); setTagDraft(''); };
 
   const chords = cleaned ? detectChords(cleaned) : [];
+
+  const save = () => {
+    onSave && onSave({
+      title: title.trim() || 'Untitled',
+      artist: artist.trim() || 'Unknown',
+      key: chords[0] || '',
+      capo: 0,
+      tags: [...tags],
+      starred: false,
+      added: 'just now',
+      status: 'learn',
+      chords,
+      sections: buildSections(cleaned),
+    });
+  };
 
   return (
     <div className="screen add">
@@ -186,7 +209,7 @@ export function AddImport({ onSaved, onBack }) {
 
           <div className="add-save">
             <Button variant="secondary" onClick={reset}>Discard</Button>
-            <Button variant="primary" iconLeft={<Icon n="check" s={18} />} onClick={onSaved}>Save to library</Button>
+            <Button variant="primary" iconLeft={<Icon n="check" s={18} />} onClick={save}>Save to library</Button>
           </div>
         </div>
       )}

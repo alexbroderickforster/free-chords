@@ -2,8 +2,7 @@
 // smooth auto-scroll + speed, transpose / capo, and hover chord diagrams.
 import React, { useState, useRef, useEffect } from 'react';
 import { Stepper, prettyKey, Icon } from '../components/index.js';
-import { transposeChord, transposeKey, chordSVG, STATUS, nextStatus } from '../lib/music.js';
-import { ALL_TAGS } from '../data/songs.js';
+import { transposeChord, transposeKey, chordSVG, STATUS } from '../lib/music.js';
 
 // One lyric line: chord-over-syllable columns (ChordSheetJS model).
 function ChordLine({ segments, transpose }) {
@@ -19,7 +18,7 @@ function ChordLine({ segments, transpose }) {
   );
 }
 
-export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMode, onToggleFocus, onToggleStar, onCycleStatus }) {
+export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMode, onToggleFocus, onToggleStar, onCycleStatus, onUpdateTags }) {
   const [transpose, setTranspose] = useState(0);
   const [capo, setCapo] = useState(song.capo || 0);
   const [fontSize, setFontSize] = useState(28);
@@ -27,22 +26,18 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
   const [speed, setSpeed] = useState(4);
   const [tune, setTune] = useState(false);
   const [hideChords, setHideChords] = useState(false);
-  const [tags, setTags] = useState(song.tags ? [...song.tags] : []);
   const [tagDraft, setTagDraft] = useState('');
   const [tagEditing, setTagEditing] = useState(false);
-  useEffect(() => { setTags(song.tags ? [...song.tags] : []); setTagEditing(false); setTagDraft(''); setCapo(song.capo || 0); setTranspose(0); }, [song.id]);
+  useEffect(() => { setTagEditing(false); setTagDraft(''); setCapo(song.capo || 0); setTranspose(0); }, [song.id]);
 
-  const persistTags = (next) => {
-    setTags(next);
-    song.tags = next;                       // reflect into the shared songbook
-    next.forEach((t) => { if (!ALL_TAGS.includes(t)) ALL_TAGS.push(t); });
-  };
+  // Tags live on the song (persisted via the app's songbook state).
+  const tags = song.tags || [];
   const addTag = (t) => {
     const v = (t || '').trim().replace(/,$/, '');
-    if (v && !tags.some((x) => x.toLowerCase() === v.toLowerCase())) persistTags([...tags, v]);
+    if (v && !tags.some((x) => x.toLowerCase() === v.toLowerCase())) onUpdateTags && onUpdateTags(song.id, [...tags, v]);
     setTagDraft('');
   };
-  const removeTag = (t) => persistTags(tags.filter((x) => x !== t));
+  const removeTag = (t) => onUpdateTags && onUpdateTags(song.id, tags.filter((x) => x !== t));
   const scRef = useRef(null), rafRef = useRef(0), accRef = useRef(0), lastRef = useRef(0), popRef = useRef(null);
 
   const updateFocus = () => {
@@ -190,7 +185,7 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
         <div className="sv-sheet" style={{ ['--lyric']: Math.round(fontSize * (focusMode ? 1.25 : 1)) + 'px' }}>
           {song.sections.map((sec, si) => (
             <section className="sv-section" key={si}>
-              <div className="sv-seclabel">{sec.label}</div>
+              {sec.label && <div className="sv-seclabel">{sec.label}</div>}
               {sec.lines.map((line, li) => <ChordLine key={li} segments={line} transpose={transpose} />)}
             </section>
           ))}

@@ -2,10 +2,10 @@
 import React, { useState } from 'react';
 import { Input, Tag, SegmentedControl, Switch, Button, Card, KeyBadge, Icon } from '../components/index.js';
 import { STATUS } from '../lib/music.js';
-import { ALL_TAGS } from '../data/songs.js';
 
 function recencyDays(s) {
   s = (s || '').toLowerCase();
+  if (s.includes('just now') || s.includes('today')) return 0;
   if (s.includes('yesterday')) return 1;
   if (s.includes('month')) return 30;
   const w = s.match(/(\d+)\s*week/); if (w) return +w[1] * 7;
@@ -50,7 +50,7 @@ function SongRow({ song, onOpen, onArtist, onTag, activeTags, onToggleStar, onCy
         )}
       </div>
       <div className="lib-row-side">
-        <KeyBadge musicKey={song.key} />
+        {song.key && <KeyBadge musicKey={song.key} />}
         <span className={'lib-status lib-status--' + status} role="button" tabIndex={0}
           aria-label={`Status: ${STATUS[status].label}. Tap to change.`}
           onClick={(e) => { e.stopPropagation(); onCycleStatus && onCycleStatus(song.id); }}
@@ -62,7 +62,7 @@ function SongRow({ song, onOpen, onArtist, onTag, activeTags, onToggleStar, onCy
   );
 }
 
-export function Library({ songs: songsProp, onOpen, onAdd, artistFilter, onClearArtist, onArtist, onToggleStar, onCycleStatus }) {
+export function Library({ songs: songsProp, tags: knownTags = [], onOpen, onAdd, artistFilter, onClearArtist, onArtist, onToggleStar, onCycleStatus }) {
   const [q, setQ] = useState('');
   const [activeTags, setActiveTags] = useState([]);
   const [sort, setSort] = useState('recent');
@@ -127,7 +127,7 @@ export function Library({ songs: songsProp, onOpen, onAdd, artistFilter, onClear
       </div>
 
       <div className="lib-tags">
-        {ALL_TAGS.map((t) => (
+        {knownTags.map((t) => (
           <Tag key={t} selected={activeTags.includes(t)} onClick={() => toggleTag(t)}>{t}</Tag>
         ))}
       </div>
