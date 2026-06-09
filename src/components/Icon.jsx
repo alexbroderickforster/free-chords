@@ -4,7 +4,7 @@
 import {
   Library, AudioLines, Sun, Moon, Check, ArrowLeft, Star, X, Plus, Music,
   AArrowDown, AArrowUp, SlidersHorizontal, Minimize2, Maximize2, RotateCcw,
-  Play, Pause, Search, Clipboard, Wand2, Mic, Download, Upload, Pencil, Trash2, FileText,
+  Play, Pause, Search, Clipboard, Wand2, Mic, Download, Upload, Pencil, Trash2,
 } from 'lucide-react';
 
 const ICONS = {
@@ -34,7 +34,6 @@ const ICONS = {
   'upload': Upload,
   'pencil': Pencil,
   'trash-2': Trash2,
-  'file-text': FileText,
 };
 
 export function Icon({ n, s = 20, cls, ...rest }) {

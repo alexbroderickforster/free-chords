@@ -1,9 +1,8 @@
-// Add / Import — paste raw chords (or extract from a PDF), clean into ChordPro,
-// preview it rendered as chords-over-lyrics, and save.
-import React, { useState, useRef } from 'react';
+// Add / Import — paste raw chords, clean into ChordPro, preview it rendered as
+// chords-over-lyrics, and save.
+import React, { useState } from 'react';
 import { Input, Button, Card, SegmentedControl, Tag, Icon } from '../components/index.js';
 import { cleanToChordPro, uniqueChords, toSections } from '../lib/chordpro.js';
-import { extractChordText } from '../lib/pdf.js';
 
 const SAMPLE = `C               G
 Slip inside the eye of your mind
@@ -20,9 +19,6 @@ export function AddImport({ onSave, onBack, knownTags = [] }) {
   const [raw, setRaw] = useState('');
   const [cleaned, setCleaned] = useState('');
   const [view, setView] = useState('preview');
-  const [pdfBusy, setPdfBusy] = useState(false);
-  const [pdfMsg, setPdfMsg] = useState('');
-  const pdfRef = useRef(null);
 
   const addTag = (t) => {
     const v = (t || '').trim().replace(/,$/, '');
@@ -37,24 +33,7 @@ export function AddImport({ onSave, onBack, knownTags = [] }) {
     try { const t = await navigator.clipboard.readText(); if (t) setRaw(t); }
     catch (e) { /* clipboard blocked — user can paste manually */ }
   };
-  const reset = () => { setCleaned(''); setRaw(''); setTitle(''); setArtist(''); setTags([]); setTagDraft(''); setPdfMsg(''); };
-
-  const loadPdf = async (e) => {
-    const file = e.target.files && e.target.files[0];
-    e.target.value = '';
-    if (!file) return;
-    setPdfBusy(true); setPdfMsg('Reading PDF…');
-    try {
-      const text = await extractChordText(file);
-      setRaw(text);
-      if (!title && file.name) setTitle(file.name.replace(/\.pdf$/i, ''));
-      setPdfMsg('Pulled text from the PDF — tidy it up if needed, then Clean up.');
-    } catch (err) {
-      setPdfMsg("Couldn't read that PDF. It may be scanned images (no selectable text).");
-    } finally {
-      setPdfBusy(false);
-    }
-  };
+  const reset = () => { setCleaned(''); setRaw(''); setTitle(''); setArtist(''); setTags([]); setTagDraft(''); };
 
   const chords = cleaned ? uniqueChords(cleaned) : [];
   const previewSections = cleaned ? toSections(cleaned) : [];
@@ -124,15 +103,10 @@ export function AddImport({ onSave, onBack, knownTags = [] }) {
         <div className="add-actions">
           <div className="add-actions-l">
             <Button variant="quiet" iconLeft={<Icon n="clipboard" s={17} />} onClick={pasteClip}>Paste</Button>
-            <Button variant="quiet" iconLeft={<Icon n="file-text" s={17} />} onClick={() => pdfRef.current && pdfRef.current.click()} disabled={pdfBusy}>
-              {pdfBusy ? 'Reading…' : 'PDF'}
-            </Button>
             <Button variant="quiet" onClick={() => setRaw(SAMPLE)}>Use example</Button>
-            <input ref={pdfRef} type="file" accept="application/pdf,.pdf" hidden onChange={loadPdf} />
           </div>
           <Button variant="primary" iconLeft={<Icon n="wand-2" s={18} />} onClick={doClean}>Clean up</Button>
         </div>
-        {pdfMsg && <p className="add-pdfmsg">{pdfMsg}</p>}
       </div>
 
       {cleaned && (

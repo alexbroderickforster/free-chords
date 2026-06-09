@@ -29,9 +29,8 @@ the first load).
   starred songs float to the top of the normal list view.
   **Export** your whole songbook to a JSON file and **import** it back (merges
   by song) to move it between browsers or share it.
-- **Add / import.** Paste raw chords copied from a webpage — or **extract from a
-  PDF** (text-based PDFs; chord-over-lyric alignment is reconstructed) — and clean
-  them into ChordPro, with a live rendered preview and detected-chord chips.
+- **Add / import.** Paste raw chords copied from a webpage and clean them into
+  ChordPro, with a live rendered preview and detected-chord chips.
 - **Edit.** Edit any saved song — title, artist, key, capo, tags, and the
   ChordPro source directly — with a live preview, or delete it.
 - **Tuner.** Reference tones for each string plus a microphone "Listen" mode

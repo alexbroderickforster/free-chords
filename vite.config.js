@@ -34,12 +34,8 @@ export default defineConfig(({ command }) => {
           ],
         },
         // Precache the app shell so it loads with no network — including fonts.
-        // pdf.js is large and only used when importing a PDF (an online action),
-        // so keep it out of the offline precache.
         workbox: {
           globPatterns: ['**/*.{js,css,html,svg,png,ico,woff,woff2}'],
-          globIgnores: ['**/pdf-*.js', '**/pdf.worker*'],
-          maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
         },
         // Let the service worker run during `vite dev` so it can be verified.
         devOptions: { enabled: true },
