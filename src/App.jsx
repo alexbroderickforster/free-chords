@@ -142,6 +142,7 @@ export function App() {
       adoptDoc(merged); markSynced(merged);
       setSyncStatus('synced');
     } catch (e) {
+      console.error('[FreeChords sync] sync failed:', e);
       // A silent (on-load) sync that can't get a token shouldn't nag — leave
       // the status as-is; the user can Sync now or it'll retry on the next edit.
       if (!silent) setSyncStatus('error');
@@ -170,7 +171,7 @@ export function App() {
     const t = setTimeout(() => {
       syncPush(buildDoc())
         .then(() => { lastSyncSig.current = sig; setSyncStatus('synced'); setLastSyncedAt(Date.now()); })
-        .catch(() => setSyncStatus('error'));
+        .catch((e) => { console.error('[FreeChords sync] push failed:', e); setSyncStatus('error'); });
     }, 1500);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps

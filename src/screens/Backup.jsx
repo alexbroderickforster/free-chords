@@ -49,9 +49,9 @@ export function BackupControls({
                 <span className="bk-dot" aria-hidden="true"></span>
                 <span>Google Drive · {SYNC_LABEL[syncStatus] || 'Connected'}</span>
               </div>
-              {lastSyncedAt && (
+              {lastSyncedAt ? (
                 <div className="bk-when">Last synced {formatTime(lastSyncedAt)}</div>
-              )}
+              ) : null}
               <div className="bk-sync-actions">
                 <button type="button" className="bk-link" onClick={onSyncNow}>Sync now</button>
                 <span className="bk-sep" aria-hidden="true">·</span>
