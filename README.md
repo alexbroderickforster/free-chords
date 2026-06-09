@@ -7,7 +7,7 @@ laptop or a tablet on a music stand.
 
 **No ads, no clutter, no upsells, anywhere, ever.**
 
-**▶ Live: <https://alexbroderickforster.github.io/free-chords/>** — open it on a
+**▶ Live: <https://freechords.app>** — open it on a
 phone or tablet and use *Add to Home Screen* to install it (works offline after
 the first load).
 
@@ -126,7 +126,7 @@ It's hidden until a Google OAuth **client ID** is provided at build time via the
    Web application.** Under **Authorized JavaScript origins** add the origins
    you'll run from:
    - `http://localhost:5173` (local dev)
-   - your hosted origin, e.g. `https://alexbroderickforster.github.io`
+   - your hosted origin, e.g. `https://freechords.app`
    (origins are scheme + host only — no path). Create it and copy the **Client ID**
    (looks like `1234-abcd.apps.googleusercontent.com`).
 

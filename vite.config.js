@@ -5,10 +5,9 @@ import { VitePWA } from 'vite-plugin-pwa';
 // FreeChords — a personal, locally-run guitar chord app.
 // Installable PWA with an offline-capable app shell (self-hosted fonts).
 //
-// Deployed to GitHub Pages under /free-chords/, so the production build uses
-// that base path. Local dev stays at "/".
-export default defineConfig(({ command }) => {
-  const base = command === 'build' ? '/free-chords/' : '/';
+// Served at the root of its own domain (freechords.app), so base is "/".
+export default defineConfig(() => {
+  const base = '/';
   return {
     base,
     plugins: [
