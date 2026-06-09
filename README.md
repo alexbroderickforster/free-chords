@@ -11,6 +11,27 @@ laptop or a tablet on a music stand.
 phone or tablet and use *Add to Home Screen* to install it (works offline after
 the first load).
 
+## Screenshots
+
+<p align="center">
+  <img src="screenshots/play-dark.png" width="100%" alt="Song view: chords over lyrics with auto-scroll (dark mode)">
+</p>
+
+<table>
+  <tr>
+    <td width="50%"><img src="screenshots/library-desktop.png" alt="Searchable, taggable songbook with favorites, learning status, and backup/sync in the sidebar"></td>
+    <td width="50%"><img src="screenshots/chord-diagram.png" alt="Hover any chord to see its fretboard fingering"></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="screenshots/tuner.png" alt="Built-in tuner with reference tones and mic pitch detection"></td>
+    <td width="50%"><img src="screenshots/play-light.png" alt="Song view in light mode"></td>
+  </tr>
+</table>
+
+<p align="center">
+  <img src="screenshots/library-mobile.png" width="280" alt="FreeChords on a phone">
+</p>
+
 ## Features
 
 - **Song view (play mode).** A teleprompter-style reading view: large, legible
