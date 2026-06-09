@@ -141,7 +141,11 @@ export function App() {
       const merged = await fullSync(buildDoc(), interactive);
       adoptDoc(merged); markSynced(merged);
       setSyncStatus('synced');
-    } catch (e) { setSyncStatus('error'); }
+    } catch (e) {
+      // A silent (on-load) sync that can't get a token shouldn't nag — leave
+      // the status as-is; the user can Sync now or it'll retry on the next edit.
+      if (!silent) setSyncStatus('error');
+    }
   };
   const disconnectSync = () => {
     syncDisconnect(); setSyncOn(false); saveSyncOptIn(false); setSyncStatus('idle');

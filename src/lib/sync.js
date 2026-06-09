@@ -117,7 +117,10 @@ async function getToken(interactive) {
   if (accessToken && Date.now() < tokenExpiry) return accessToken;
   if (!CLIENT_ID) throw new Error('Sync is not configured');
   await ensureTokenClient();
-  return requestToken(interactive ? 'consent' : '');
+  // 'none' = re-acquire a token with no UI (works while the Google session +
+  // prior grant are valid), so a refresh doesn't force a re-click. 'consent'
+  // is only used for the explicit Connect action.
+  return requestToken(interactive ? 'consent' : 'none');
 }
 
 const auth = (token) => ({ Authorization: 'Bearer ' + token });
