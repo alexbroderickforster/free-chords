@@ -71,6 +71,23 @@ let accessToken = null;
 let tokenExpiry = 0;
 let pending = null; // { resolve, reject } for the in-flight token request
 
+// Cache the access token (valid ~1h) so a page refresh reuses it directly —
+// no Google round-trip, no re-auth — until it expires. It only grants access
+// to this app's private Drive folder, and stays on the user's own device.
+const TOKEN_KEY = 'freechords:gtoken';
+(function restoreToken() {
+  try {
+    const c = JSON.parse(localStorage.getItem(TOKEN_KEY) || 'null');
+    if (c && c.tok && c.exp > Date.now()) { accessToken = c.tok; tokenExpiry = c.exp; }
+  } catch { /* ignore */ }
+})();
+function rememberToken() {
+  try { localStorage.setItem(TOKEN_KEY, JSON.stringify({ tok: accessToken, exp: tokenExpiry })); } catch { /* ignore */ }
+}
+function forgetToken() {
+  try { localStorage.removeItem(TOKEN_KEY); } catch { /* ignore */ }
+}
+
 function settle(fn, value) {
   if (!pending) return;
   const p = pending; pending = null;
@@ -88,6 +105,7 @@ async function ensureTokenClient() {
           accessToken = resp.access_token;
           const ttl = (resp.expires_in ? resp.expires_in * 1000 : 3600000) - 60000;
           tokenExpiry = Date.now() + Math.max(60000, ttl);
+          rememberToken();
           settle('resolve', accessToken);
         } else {
           settle('reject', new Error((resp && resp.error) || 'Authorization failed'));
@@ -127,6 +145,7 @@ const auth = (token) => ({ Authorization: 'Bearer ' + token });
 
 // Surface the real Drive API error (status + Google's message) for diagnosis.
 async function driveError(label, r) {
+  if (r.status === 401) { accessToken = null; tokenExpiry = 0; forgetToken(); } // stale token
   let detail = '';
   try { const j = await r.json(); detail = j?.error?.message || ''; } catch { /* ignore */ }
   return new Error(`${label} (${r.status}${detail ? ': ' + detail : ''})`);
@@ -193,4 +212,5 @@ export function disconnect() {
     try { window.google.accounts.oauth2.revoke(accessToken); } catch { /* ignore */ }
   }
   accessToken = null; tokenExpiry = 0;
+  forgetToken();
 }
