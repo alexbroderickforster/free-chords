@@ -18,7 +18,7 @@ function formatTime(ts) {
 export function BackupControls({
   className = '',
   onExport, onImport,
-  syncConfigured, syncOn, syncStatus, lastSyncedAt,
+  syncConfigured, syncOn, syncStatus, syncError, lastSyncedAt,
   onConnectSync, onSyncNow, onDisconnectSync,
 }) {
   const fileRef = useRef(null);
@@ -40,9 +40,12 @@ export function BackupControls({
       {syncConfigured && (
         <div className="bk-sync">
           {!syncOn ? (
-            <Button variant="ghost" size="sm" block iconLeft={<Icon n="upload" s={16} />} onClick={onConnectSync}>
-              Sync with Google Drive
-            </Button>
+            <>
+              <Button variant="ghost" size="sm" block iconLeft={<Icon n="upload" s={16} />} onClick={onConnectSync}>
+                Sync with Google Drive
+              </Button>
+              {syncError ? <p className="bk-error"><Icon n="circle-alert" s={14} />{syncError}</p> : null}
+            </>
           ) : (
             <div className="bk-synced">
               <div className={'bk-status bk-status--' + syncStatus}>
@@ -52,6 +55,7 @@ export function BackupControls({
               {lastSyncedAt ? (
                 <div className="bk-when">Last synced {formatTime(lastSyncedAt)}</div>
               ) : null}
+              {syncStatus === 'error' && syncError ? <p className="bk-error"><Icon n="circle-alert" s={14} />{syncError}</p> : null}
               <div className="bk-sync-actions">
                 <button type="button" className="bk-link" onClick={onSyncNow}>Sync now</button>
                 <span className="bk-sep" aria-hidden="true">·</span>

@@ -118,15 +118,25 @@ async function ensureTokenClient() {
 
 function requestToken(prompt) {
   return new Promise((resolve, reject) => {
-    pending = { resolve, reject };
+    // If a prior request is still pending (e.g. a background push raced a tap),
+    // fail it before taking over the single callback slot.
+    if (pending) { const p = pending; pending = null; p.reject(new Error('superseded')); }
     // Safety net: if Google never calls back (e.g. a silently blocked popup),
     // don't leave the request hanging forever.
-    const guard = setTimeout(() => settle('reject', new Error('timeout')), 60000);
+    const guard = setTimeout(() => settle('reject', new Error('timeout')), 20000);
     const done = (fn) => (v) => { clearTimeout(guard); fn(v); };
     pending = { resolve: done(resolve), reject: done(reject) };
     try { tokenClient.requestAccessToken({ prompt }); }
     catch (e) { settle('reject', e); }
   });
+}
+
+// Pre-load Google sign-in (network fetch of the GIS script) ahead of time, so
+// that on the user's tap the popup opens synchronously inside the gesture —
+// otherwise iOS Safari blocks it. Safe to call repeatedly; errors are ignored.
+export function warmUp() {
+  if (!CLIENT_ID) return;
+  ensureTokenClient().catch(() => {});
 }
 
 // interactive=true allows a popup (use on the user's click). interactive=false
@@ -185,26 +195,42 @@ async function writeFile(token, id, doc) {
   if (!r.ok) throw await driveError('Drive write failed', r);
 }
 
+// Run a token-using operation; if Drive rejects the token (401, e.g. a stale
+// cached one), re-acquire a fresh token and retry once.
+async function withToken(interactive, fn) {
+  const token = await getToken(interactive);
+  try { return await fn(token); }
+  catch (e) {
+    if (/\(401/.test(e.message || '')) { // driveError already cleared the token
+      const fresh = await getToken(interactive);
+      return await fn(fresh);
+    }
+    throw e;
+  }
+}
+
 // Pull remote, merge with local, write the merged doc back. Returns the merged
 // doc so the caller can adopt it as the new local state.
 export async function fullSync(localDoc, interactive) {
-  const token = await getToken(interactive);
-  const file = await findFile(token);
-  const remote = file ? await downloadFile(token, file.id) : null;
-  const merged = remote ? mergeDocs(remote, localDoc) : localDoc;
-  const id = file ? file.id : await createFile(token);
-  await writeFile(token, id, merged);
-  return merged;
+  return withToken(interactive, async (token) => {
+    const file = await findFile(token);
+    const remote = file ? await downloadFile(token, file.id) : null;
+    const merged = remote ? mergeDocs(remote, localDoc) : localDoc;
+    const id = file ? file.id : await createFile(token);
+    await writeFile(token, id, merged);
+    return merged;
+  });
 }
 
 // Upload the local doc (used for debounced change-driven pushes). Never forces
 // a popup; if a token isn't available without UI it simply throws and the
 // caller can ignore it until the next full sync.
 export async function push(localDoc) {
-  const token = await getToken(false);
-  const file = await findFile(token);
-  const id = file ? file.id : await createFile(token);
-  await writeFile(token, id, localDoc);
+  return withToken(false, async (token) => {
+    const file = await findFile(token);
+    const id = file ? file.id : await createFile(token);
+    await writeFile(token, id, localDoc);
+  });
 }
 
 export function disconnect() {

@@ -12,7 +12,7 @@ import { nextStatus } from './lib/music.js';
 import { BackupControls } from './screens/Backup.jsx';
 import { loadSongs, saveSongs, loadTags, saveTags, loadTheme, saveTheme, loadThemeAt, saveThemeAt, loadPrefs, savePrefs, loadDeletions, saveDeletions, loadSyncOptIn, saveSyncOptIn } from './lib/storage.js';
 import { exportSongbook, parseBackup } from './lib/backup.js';
-import { isConfigured as syncConfigured, fullSync, push as syncPush, disconnect as syncDisconnect } from './lib/sync.js';
+import { isConfigured as syncConfigured, fullSync, push as syncPush, disconnect as syncDisconnect, warmUp as warmUpSync } from './lib/sync.js';
 import './styles/app.css';
 
 const slugify = (s) =>
@@ -21,6 +21,23 @@ const slugify = (s) =>
 // A fingerprint of the syncable data — used to push only when it actually changes.
 const syncSig = (songs, tags, prefs, deletions, theme, themeAt) =>
   JSON.stringify({ s: songs, t: tags, p: prefs, d: deletions, th: theme, ta: themeAt });
+
+// Is the app running as an installed (standalone) iOS web app? The Google
+// sign-in popup is structurally broken there, so we steer the user to a browser.
+const isIosStandalone = () =>
+  typeof navigator !== 'undefined' && navigator.standalone === true;
+
+// Turn a raw sync error into something a person (on a phone, with no console) can read.
+function friendlySyncError(e) {
+  const m = (e && e.message) || '';
+  if (/origin|not allowed|invalid_client/i.test(m)) return 'This site isn’t authorized for Google sign-in yet (origin not allowed). The app owner needs to add it in Google Cloud.';
+  if (/popup_failed_to_open|popup.*block/i.test(m)) return 'The Google sign-in popup was blocked. Allow popups, then tap Connect again.';
+  if (/popup_closed|user_cancel|access_denied/i.test(m)) return 'Sign-in was cancelled. Tap Connect to try again.';
+  if (/timeout|superseded/i.test(m)) return 'Google sign-in didn’t respond. If you’re using the installed app, open freechords.app in your browser instead, then tap Connect.';
+  if (/Failed to load Google sign-in/i.test(m)) return 'Couldn’t load Google sign-in — check your connection and try again.';
+  if (/\(401|\(403/.test(m)) return 'Google rejected the request (' + m.replace(/^.*\((\d{3}.*)\)$/, '$1') + '). Try Connect again.';
+  return m || 'Sync failed for an unknown reason.';
+}
 
 export function App() {
   const [tab, setTab] = useState('songs');
@@ -36,6 +53,7 @@ export function App() {
   const [deletions, setDeletions] = useState(() => loadDeletions());
   const [syncOn, setSyncOn] = useState(() => loadSyncOptIn());
   const [syncStatus, setSyncStatus] = useState('idle'); // idle | syncing | synced | offline | error
+  const [syncError, setSyncError] = useState(''); // human-readable reason, shown persistently
   const [themeAt, setThemeAt] = useState(() => loadThemeAt());
   const [lastSyncedAt, setLastSyncedAt] = useState(0);
 
@@ -121,42 +139,49 @@ export function App() {
   };
 
   const connectSync = async () => {
+    // The Google sign-in popup doesn't work in an installed iOS web app.
+    if (isIosStandalone()) {
+      setSyncStatus('error');
+      setSyncError('Open freechords.app in Safari (not the installed app) to connect Google Drive — Apple blocks the sign-in popup in installed web apps.');
+      return;
+    }
     try {
-      setSyncStatus('syncing');
+      setSyncStatus('syncing'); setSyncError('');
       const merged = await fullSync(buildDoc(), true);
       adoptDoc(merged); markSynced(merged);
       setSyncOn(true); saveSyncOptIn(true);
       setSyncStatus('synced'); setToast('Synced with Google Drive');
     } catch (e) {
       console.error('[FreeChords sync] connect failed:', e);
-      setSyncStatus('error');
-      setToast('Sync failed: ' + ((e && e.message) || 'unknown'));
+      setSyncStatus('error'); setSyncError(friendlySyncError(e));
     }
   };
   const syncNow = async (interactive = false, silent = false) => {
     if (!syncOn && !interactive) return;
     if (typeof navigator !== 'undefined' && !navigator.onLine) { if (!silent) setSyncStatus('offline'); return; }
     try {
-      if (!silent) setSyncStatus('syncing'); // silent = quiet background pull on load
+      if (!silent) { setSyncStatus('syncing'); setSyncError(''); } // silent = quiet background pull on load
       const merged = await fullSync(buildDoc(), interactive);
       adoptDoc(merged); markSynced(merged);
-      setSyncStatus('synced');
+      setSyncStatus('synced'); setSyncError('');
     } catch (e) {
       console.error('[FreeChords sync] sync failed:', e);
       // A silent (on-load) sync that can't get a token shouldn't nag — leave
       // the status as-is; the user can Sync now or it'll retry on the next edit.
-      if (!silent) setSyncStatus('error');
+      if (!silent) { setSyncStatus('error'); setSyncError(friendlySyncError(e)); }
     }
   };
   const disconnectSync = () => {
-    syncDisconnect(); setSyncOn(false); saveSyncOptIn(false); setSyncStatus('idle');
+    syncDisconnect(); setSyncOn(false); saveSyncOptIn(false); setSyncStatus('idle'); setSyncError('');
     setToast('Disconnected from Google Drive');
   };
 
-  // On load, pull once so edits made on another device show up. (This is the
-  // only automatic full sync; everything else is change-driven.)
+  // On load: pre-warm Google sign-in (so the popup opens inside the tap gesture
+  // on mobile), and pull once if already connected so other-device edits show up.
   useEffect(() => {
-    if (syncOn && syncConfigured()) syncNow(false, true); // silent
+    if (!syncConfigured()) return;
+    warmUpSync();
+    if (syncOn) syncNow(false, true); // silent
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -170,8 +195,8 @@ export function App() {
     setSyncStatus('syncing');
     const t = setTimeout(() => {
       syncPush(buildDoc())
-        .then(() => { lastSyncSig.current = sig; setSyncStatus('synced'); setLastSyncedAt(Date.now()); })
-        .catch((e) => { console.error('[FreeChords sync] push failed:', e); setSyncStatus('error'); });
+        .then(() => { lastSyncSig.current = sig; setSyncStatus('synced'); setSyncError(''); setLastSyncedAt(Date.now()); })
+        .catch((e) => { console.error('[FreeChords sync] push failed:', e); setSyncStatus('error'); setSyncError(friendlySyncError(e)); });
     }, 1500);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -241,7 +266,7 @@ export function App() {
   // Backup + sync controls, shared between the desktop sidebar and mobile.
   const backupProps = {
     onExport: exportData, onImport: importData,
-    syncConfigured: syncConfigured(), syncOn, syncStatus, lastSyncedAt,
+    syncConfigured: syncConfigured(), syncOn, syncStatus, syncError, lastSyncedAt,
     onConnectSync: connectSync, onSyncNow: () => syncNow(true), onDisconnectSync: disconnectSync,
   };
 
@@ -305,7 +330,7 @@ export function App() {
         {!song && <TabBar className="app-tabbar" items={navItems} value={tab} onChange={setTab} />}
       </div>
 
-      {toast && <div className="app-toast"><Icon n="check" s={16} />{toast}</div>}
+      {toast && <div className={'app-toast' + (/fail|couldn|error/i.test(toast) ? ' app-toast--error' : '')}><Icon n={/fail|couldn|error/i.test(toast) ? 'circle-alert' : 'check'} s={16} />{toast}</div>}
     </div>
   );
 }

@@ -156,6 +156,8 @@ body {
 .bk-link { border: none; background: none; padding: 0; cursor: pointer; color: var(--accent); font-family: var(--font-sans); font-size: var(--text-sm); font-weight: 600; }
 .bk-link:hover { color: var(--accent-hover); text-decoration: underline; }
 .bk-sep { color: var(--ink-faint); }
+.bk-error { display: flex; align-items: flex-start; gap: 6px; color: var(--danger); font-size: var(--text-sm); line-height: 1.45; margin: 8px 2px 0; }
+.bk-error svg { flex: none; margin-top: 2px; }
 
 /* In the desktop sidebar footer: stack the export/import buttons. */
 .bk--sidenav .bk-files { flex-direction: column; }
@@ -370,4 +372,5 @@ body {
   white-space: nowrap; animation: fc-toast-in var(--dur-base) var(--ease-out);
 }
 .app-toast svg { color: var(--good); }
+.app-toast--error svg { color: var(--danger); }
 @keyframes fc-toast-in { from { opacity: 0; transform: translate(-50%, 8px); } to { opacity: 1; transform: translate(-50%, 0); } }
