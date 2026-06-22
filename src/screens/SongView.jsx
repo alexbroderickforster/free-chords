@@ -105,6 +105,7 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
 
   // chord-diagram popover (hover / tap) + focus init
   useEffect(() => {
+    if (song.format === 'tab') { const sc = scRef.current; if (sc) sc.addEventListener('scroll', updateFocus, { passive: true }); return () => sc && sc.removeEventListener('scroll', updateFocus); }
     preloadChords(); // warm the chord-fingering database before the user hovers
     const sc = scRef.current, pop = popRef.current; if (!sc || !pop) return;
     const show = (c) => {
@@ -135,9 +136,10 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
 
   useEffect(() => { updateFocus(); }, [fontSize, transpose]);
 
+  const isTab = song.format === 'tab';
   const dispKey = transposeChordName(song.key, transpose);
   const status = song.status || 'learn';
-  const sections = useMemo(() => toSections(song.source, transpose), [song.source, transpose]);
+  const sections = useMemo(() => (isTab ? [] : toSections(song.source, transpose)), [song.source, transpose, isTab]);
 
   return (
     <div className={'sv' + (hideChords ? ' sv--no-chords' : '')} data-playing={playing ? 'true' : 'false'}>
@@ -156,10 +158,13 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
             {onArtist
               ? <button className="sv-artist" onClick={() => onArtist(song.artist)}>{song.artist}</button>
               : <span>{song.artist}</span>}
-            <span className="sv-key">{prettyKey(dispKey)}</span>
-            <span className={'sv-pill' + (capo > 0 ? ' sv-pill--capo' : ' sv-pill--muted')}>
-              {capo > 0 ? `Capo ${capo}` : 'No capo'}
-            </span>
+            {!isTab && <span className="sv-key">{prettyKey(dispKey)}</span>}
+            {!isTab && (
+              <span className={'sv-pill' + (capo > 0 ? ' sv-pill--capo' : ' sv-pill--muted')}>
+                {capo > 0 ? `Capo ${capo}` : 'No capo'}
+              </span>
+            )}
+            {isTab && <span className="sv-pill sv-pill--muted">Tab</span>}
             <button className={'sv-status sv-status--' + status}
               aria-label={`Status: ${STATUS[status].label}. Tap to change.`}
               onClick={() => onCycleStatus && onCycleStatus(song.id)}>
@@ -189,10 +194,10 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
           </div>
         </div>
         <div className="sv-actions">
-          <button className={'sv-ic' + (hideChords ? ' is-on' : '')} aria-label={hideChords ? 'Show chords' : 'Hide chords'} onClick={toggleHideChords}><Icon n="music" s={20} /></button>
+          {!isTab && <button className={'sv-ic' + (hideChords ? ' is-on' : '')} aria-label={hideChords ? 'Show chords' : 'Hide chords'} onClick={toggleHideChords}><Icon n="music" s={20} /></button>}
           <button className="sv-ic" aria-label="Smaller text" onClick={() => changeFont(-2)}><Icon n="a-arrow-down" s={21} /></button>
           <button className="sv-ic" aria-label="Larger text" onClick={() => changeFont(2)}><Icon n="a-arrow-up" s={21} /></button>
-          <button className={'sv-ic' + (tune ? ' is-on' : '')} aria-label="Transpose & capo" onClick={() => setTune((s) => !s)}><Icon n="sliders-horizontal" s={20} /></button>
+          {!isTab && <button className={'sv-ic' + (tune ? ' is-on' : '')} aria-label="Transpose & capo" onClick={() => setTune((s) => !s)}><Icon n="sliders-horizontal" s={20} /></button>}
           {onEdit && (
             <button className="sv-ic" aria-label="Edit song" onClick={onEdit}><Icon n="pencil" s={19} /></button>
           )}
@@ -201,7 +206,7 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
           )}
           <button className="sv-ic" aria-label="Light or dark" onClick={onToggleTheme}><Icon n={dark ? 'sun' : 'moon'} s={20} /></button>
         </div>
-        {tune && (
+        {tune && !isTab && (
           <div className="sv-tune">
             <Stepper label="Transpose" value={transpose} min={-6} max={6} format={(v) => (v > 0 ? `+${v}` : String(v))} onChange={changeTranspose} />
             <Stepper label="Capo" value={capo} min={0} max={9} format={(v) => (v === 0 ? '—' : String(v))} onChange={changeCapo} />
@@ -211,7 +216,9 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
 
       <div className="sv-scroller" ref={scRef}>
         <div className="sv-sheet" style={{ ['--lyric']: Math.round(fontSize * (focusMode ? 1.25 : 1)) + 'px' }}>
-          {sections.map((sec, si) => (
+          {isTab ? (
+            <pre className="sv-tab">{song.source}</pre>
+          ) : sections.map((sec, si) => (
             <section className="sv-section" key={si}>
               {sec.label && <div className="sv-seclabel">{sec.label}</div>}
               {sec.lines.map((line, li) => <ChordLine key={li} segments={line} />)}

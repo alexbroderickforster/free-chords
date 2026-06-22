@@ -1,8 +1,9 @@
-// Add / Import — paste raw chords, clean into ChordPro, preview it rendered as
-// chords-over-lyrics, and save.
+// Add / Import — paste chords (cleaned into ChordPro) or tablature (kept
+// verbatim, monospace), preview it, and save.
 import React, { useState } from 'react';
 import { Input, Button, Card, SegmentedControl, Tag, Icon } from '../components/index.js';
 import { cleanToChordPro, uniqueChords, toSections } from '../lib/chordpro.js';
+import { isMostlyTab } from '../lib/tab.js';
 
 const SAMPLE = `C               G
 Slip inside the eye of your mind
@@ -10,6 +11,12 @@ Am                 E
 Don't you know you might find
 F                 G
 A better place to play`;
+
+const TAB_SAMPLE = `[Intro]
+G|---------------------------------|
+D|---------------------------------|
+A|-----------------5-5-3-----------|
+E|---3-3-3-3-5-5-5---------3-3------|`;
 
 export function AddImport({ onSave, onBack, knownTags = [] }) {
   const [title, setTitle] = useState('');
@@ -19,6 +26,10 @@ export function AddImport({ onSave, onBack, knownTags = [] }) {
   const [raw, setRaw] = useState('');
   const [cleaned, setCleaned] = useState('');
   const [view, setView] = useState('preview');
+  const [format, setFormat] = useState('chordpro'); // 'chordpro' | 'tab'
+  const [formatTouched, setFormatTouched] = useState(false);
+
+  const isTab = format === 'tab';
 
   const addTag = (t) => {
     const v = (t || '').trim().replace(/,$/, '');
@@ -28,27 +39,41 @@ export function AddImport({ onSave, onBack, knownTags = [] }) {
   const removeTag = (t) => setTags(tags.filter((x) => x !== t));
   const suggestions = knownTags.filter((t) => !tags.some((x) => x.toLowerCase() === t.toLowerCase()));
 
-  const doClean = () => { setCleaned(cleanToChordPro(raw || SAMPLE)); setView('preview'); };
+  // Follow the content: switch to Tab when a paste is predominantly tablature,
+  // back to Chords otherwise — until the user picks a format by hand, after
+  // which their choice always wins.
+  const onRaw = (value) => {
+    setRaw(value);
+    if (!formatTouched) setFormat(isMostlyTab(value) ? 'tab' : 'chordpro');
+  };
+  const pickFormat = (v) => { setFormat(v); setFormatTouched(true); };
+
+  const doClean = () => {
+    const src = raw || (isTab ? TAB_SAMPLE : SAMPLE);
+    setCleaned(isTab ? src : cleanToChordPro(src));
+    setView('preview');
+  };
   const pasteClip = async () => {
-    try { const t = await navigator.clipboard.readText(); if (t) setRaw(t); }
+    try { const t = await navigator.clipboard.readText(); if (t) onRaw(t); }
     catch (e) { /* clipboard blocked — user can paste manually */ }
   };
   const reset = () => { setCleaned(''); setRaw(''); setTitle(''); setArtist(''); setTags([]); setTagDraft(''); };
 
-  const chords = cleaned ? uniqueChords(cleaned) : [];
-  const previewSections = cleaned ? toSections(cleaned) : [];
+  const chords = (!isTab && cleaned) ? uniqueChords(cleaned) : [];
+  const previewSections = (!isTab && cleaned) ? toSections(cleaned) : [];
 
   const save = () => {
     onSave && onSave({
       title: title.trim() || 'Untitled',
       artist: artist.trim() || 'Unknown',
-      key: chords[0] || '',
+      key: isTab ? '' : (chords[0] || ''),
       capo: 0,
       tags: [...tags],
       starred: false,
       added: 'just now',
       status: 'learn',
       source: cleaned,
+      format,
     });
   };
 
@@ -60,7 +85,7 @@ export function AddImport({ onSave, onBack, knownTags = [] }) {
       <div className="screen-head">
         <div className="screen-eyebrow fc-eyebrow">New song</div>
         <h1 className="screen-title">Add a song</h1>
-        <p className="screen-lead">Paste chords copied from a webpage. They'll be lined up into ChordPro.</p>
+        <p className="screen-lead">Paste chords or tab copied from a webpage. Chords get lined up over the lyrics; tab is kept exactly as-is.</p>
       </div>
 
       <div className="add-fields">
@@ -98,52 +123,62 @@ export function AddImport({ onSave, onBack, knownTags = [] }) {
       </div>
 
       <div className="add-paste">
-        <Input label="Paste chords" multiline mono rows={9} value={raw}
-          placeholder={SAMPLE} onChange={(e) => setRaw(e.target.value)} />
+        <div className="add-formatrow">
+          <label className="fc-eyebrow">Format</label>
+          <SegmentedControl
+            options={[{ value: 'chordpro', label: 'Chords' }, { value: 'tab', label: 'Tab' }]}
+            value={format} onChange={pickFormat} />
+        </div>
+        <Input label={isTab ? 'Paste tab' : 'Paste chords'} multiline mono rows={9} value={raw}
+          placeholder={isTab ? TAB_SAMPLE : SAMPLE} onChange={(e) => onRaw(e.target.value)} />
         <div className="add-actions">
           <div className="add-actions-l">
             <Button variant="quiet" iconLeft={<Icon n="clipboard" s={17} />} onClick={pasteClip}>Paste</Button>
-            <Button variant="quiet" onClick={() => setRaw(SAMPLE)}>Use example</Button>
+            <Button variant="quiet" onClick={() => setRaw(isTab ? TAB_SAMPLE : SAMPLE)}>Use example</Button>
           </div>
-          <Button variant="primary" iconLeft={<Icon n="wand-2" s={18} />} onClick={doClean}>Clean up</Button>
+          <Button variant="primary" iconLeft={<Icon n="wand-2" s={18} />} onClick={doClean}>{isTab ? 'Preview' : 'Clean up'}</Button>
         </div>
       </div>
 
       {cleaned && (
         <div className="add-preview">
           <div className="add-preview-head">
-            <div className="fc-eyebrow">{chords.length} chord{chords.length === 1 ? '' : 's'} detected</div>
-            <SegmentedControl options={[{ value: 'preview', label: 'Preview' }, { value: 'source', label: 'ChordPro' }]}
-              value={view} onChange={setView} />
+            <div className="fc-eyebrow">{isTab ? 'Tab' : `${chords.length} chord${chords.length === 1 ? '' : 's'} detected`}</div>
+            {!isTab && (
+              <SegmentedControl options={[{ value: 'preview', label: 'Preview' }, { value: 'source', label: 'ChordPro' }]}
+                value={view} onChange={setView} />
+            )}
           </div>
 
-          {chords.length > 0 && (
+          {!isTab && chords.length > 0 && (
             <div className="add-chips">{chords.map((c) => <Tag key={c}>{c}</Tag>)}</div>
           )}
 
           <Card flat className="add-pre">
-            {view === 'source'
-              ? <pre>{cleaned}</pre>
-              : (
-                <div className="cp">
-                  {previewSections.map((sec, si) => (
-                    <React.Fragment key={si}>
-                      {sec.label && <div className="cp-seclabel fc-eyebrow">{sec.label}</div>}
-                      {sec.lines.map((line, li) => (
-                        <div className="cp-line" key={li}>
-                          {line.map((s, j) => (
-                            <span className="cp-seg" key={j}>
-                              <span className="cp-chord">{s.chord || ' '}</span>
-                              <span className="cp-lyric">{s.text || ' '}</span>
-                            </span>
-                          ))}
-                        </div>
-                      ))}
-                      {si < previewSections.length - 1 && <div className="cp-gap"></div>}
-                    </React.Fragment>
-                  ))}
-                </div>
-              )}
+            {isTab
+              ? <pre className="add-tab">{cleaned}</pre>
+              : view === 'source'
+                ? <pre>{cleaned}</pre>
+                : (
+                  <div className="cp">
+                    {previewSections.map((sec, si) => (
+                      <React.Fragment key={si}>
+                        {sec.label && <div className="cp-seclabel fc-eyebrow">{sec.label}</div>}
+                        {sec.lines.map((line, li) => (
+                          <div className="cp-line" key={li}>
+                            {line.map((s, j) => (
+                              <span className="cp-seg" key={j}>
+                                <span className="cp-chord">{s.chord || ' '}</span>
+                                <span className="cp-lyric">{s.text || ' '}</span>
+                              </span>
+                            ))}
+                          </div>
+                        ))}
+                        {si < previewSections.length - 1 && <div className="cp-gap"></div>}
+                      </React.Fragment>
+                    ))}
+                  </div>
+                )}
           </Card>
 
           <div className="add-save">

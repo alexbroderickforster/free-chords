@@ -1,11 +1,22 @@
-// TunerView — in-app guitar tuner: reference tones + live mic pitch detection.
+// TunerView — in-app guitar/bass tuner: reference tones + live mic pitch detection.
 import React, { useState, useRef, useEffect } from 'react';
-import { Icon } from '../components/index.js';
+import { SegmentedControl, Icon } from '../components/index.js';
 
-const TN_STRINGS = [
-  { label: 'E', freq: 82.41 }, { label: 'A', freq: 110.00 }, { label: 'D', freq: 146.83 },
-  { label: 'G', freq: 196.00 }, { label: 'B', freq: 246.94 }, { label: 'E', freq: 329.63 },
-];
+const TUNINGS = {
+  guitar: {
+    lead: 'Standard tuning · E A D G B E',
+    strings: [
+      { label: 'E', freq: 82.41 }, { label: 'A', freq: 110.00 }, { label: 'D', freq: 146.83 },
+      { label: 'G', freq: 196.00 }, { label: 'B', freq: 246.94 }, { label: 'E', freq: 329.63 },
+    ],
+  },
+  bass: {
+    lead: 'Standard tuning · E A D G',
+    strings: [
+      { label: 'E', freq: 41.20 }, { label: 'A', freq: 55.00 }, { label: 'D', freq: 73.42 }, { label: 'G', freq: 98.00 },
+    ],
+  },
+};
 const TN_NOTES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
 function autoCorrelate(b, sampleRate) {
@@ -31,10 +42,13 @@ function autoCorrelate(b, sampleRate) {
 
 export function TunerView() {
   const [live, setLive] = useState(false);
+  const [instrument, setInstrument] = useState('guitar'); // 'guitar' | 'bass'
+  const strings = TUNINGS[instrument].strings;
   const root = useRef(null);
   const ac = useRef(null), stream = useRef(null), analyser = useRef(null), buf = useRef(null);
   const raf = useRef(0), last = useRef(0), liveRef = useRef(false);
   const hist = useRef([]), smooth = useRef(0), silence = useRef(0);
+  const mounted = useRef(true), startGen = useRef(0);
 
   const audio = () => { if (!ac.current) ac.current = new (window.AudioContext || window.webkitAudioContext)(); return ac.current; };
   const $ = (sel) => root.current && root.current.querySelector(sel);
@@ -64,7 +78,7 @@ export function TunerView() {
     $('.tn-meter').classList.toggle('intune', inTune);
     $('.tn-cents').textContent = (cents > 0 ? '+' : '') + cents + ' cents';
     let near = 0, best = 1e9;
-    TN_STRINGS.forEach((s, i) => { const dd = Math.abs(1200 * Math.log2(freq / s.freq)); if (dd < best) { best = dd; near = i; } });
+    strings.forEach((s, i) => { const dd = Math.abs(1200 * Math.log2(freq / s.freq)); if (dd < best) { best = dd; near = i; } });
     root.current.querySelectorAll('.tn-str').forEach((el, i) => el.classList.toggle('near', i === near));
     const st = $('.tn-status');
     if (inTune) { st.textContent = 'In tune'; st.className = 'tn-status intune'; }
@@ -78,7 +92,8 @@ export function TunerView() {
       last.current = now;
       analyser.current.getFloatTimeDomainData(buf.current);
       const f = autoCorrelate(buf.current, ac.current.sampleRate);
-      if (f > 50 && f < 1200) {
+      const floor = instrument === 'bass' ? 35 : 50; // bass low E ≈ 41 Hz
+      if (f > floor && f < 1200) {
         silence.current = 0;
         // Median of recent readings drops single-frame spikes / octave glitches.
         const h = hist.current; h.push(f); if (h.length > 6) h.shift();
@@ -98,11 +113,17 @@ export function TunerView() {
   };
 
   const startMic = async () => {
+    const gen = ++startGen.current; // invalidates any earlier pending start
     try {
       const ctx = audio();
-      stream.current = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
-      const src = ctx.createMediaStreamSource(stream.current);
-      analyser.current = ctx.createAnalyser(); analyser.current.fftSize = 2048;
+      const ms = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
+      // If we unmounted or were superseded (e.g. instrument flipped) while the
+      // permission prompt was open, drop this stream instead of leaking the mic.
+      if (!mounted.current || gen !== startGen.current) { ms.getTracks().forEach((t) => t.stop()); return; }
+      stream.current = ms;
+      const src = ctx.createMediaStreamSource(ms);
+      analyser.current = ctx.createAnalyser();
+      analyser.current.fftSize = instrument === 'bass' ? 4096 : 2048; // longer window for low bass pitches
       buf.current = new Float32Array(analyser.current.fftSize);
       src.connect(analyser.current);
       hist.current = []; smooth.current = 0; silence.current = 0;
@@ -111,13 +132,15 @@ export function TunerView() {
       $('.tn-hint').textContent = 'Play a single string and let it ring.';
       loop();
     } catch (e) {
+      if (!mounted.current || gen !== startGen.current) return;
       $('.tn-status').textContent = 'Microphone unavailable — use the reference tones.';
       $('.tn-hint').textContent = 'Allow mic access to tune by ear, or tap a string for its tone.';
     }
   };
   const stopMic = () => {
+    startGen.current++; // cancel any in-flight startMic
     liveRef.current = false; setLive(false); cancelAnimationFrame(raf.current);
-    if (stream.current) stream.current.getTracks().forEach((t) => t.stop());
+    if (stream.current) { stream.current.getTracks().forEach((t) => t.stop()); stream.current = null; }
     const noteEl = $('.tn-note'); noteEl.className = 'tn-note idle'; noteEl.innerHTML = '<span class="n">—</span>';
     $('.tn-status').textContent = 'Tap a string for a reference tone'; $('.tn-status').className = 'tn-status';
     $('.tn-meter').classList.remove('intune'); $('.tn-dot').style.left = '50%'; $('.tn-cents').textContent = '—';
@@ -126,16 +149,31 @@ export function TunerView() {
   };
 
   useEffect(() => () => {
+    mounted.current = false; startGen.current++;
     liveRef.current = false; cancelAnimationFrame(raf.current);
     if (stream.current) stream.current.getTracks().forEach((t) => t.stop());
   }, []);
+
+  // Restart the mic when the instrument changes mid-listen, so the new fftSize /
+  // frequency floor / string set take effect.
+  useEffect(() => {
+    if (!liveRef.current) return;
+    stopMic();
+    startMic();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [instrument]);
 
   return (
     <div className="screen tn" ref={root}>
       <div className="screen-head">
         <div className="screen-eyebrow fc-eyebrow">Tune up</div>
         <h1 className="screen-title">Tuner</h1>
-        <p className="screen-lead">Standard tuning · E A D G B E</p>
+        <p className="screen-lead">{TUNINGS[instrument].lead}</p>
+        <div className="tn-instrument">
+          <SegmentedControl
+            options={[{ value: 'guitar', label: 'Guitar' }, { value: 'bass', label: 'Bass' }]}
+            value={instrument} onChange={setInstrument} />
+        </div>
       </div>
 
       <div className="tn-note idle"><span className="n">—</span></div>
@@ -156,8 +194,8 @@ export function TunerView() {
         <div className="tn-cents">—</div>
       </div>
 
-      <div className="tn-strings">
-        {TN_STRINGS.map((s, i) => (
+      <div className="tn-strings" data-count={strings.length}>
+        {strings.map((s, i) => (
           <button className="tn-str" key={i} onClick={(e) => playTone(s.freq, e.currentTarget)}>
             <span className="sn">{s.label}</span><span className="sf">{s.freq.toFixed(0)} Hz</span>
           </button>

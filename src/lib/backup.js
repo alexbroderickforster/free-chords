@@ -15,6 +15,8 @@ function normalizeSong(s) {
     status: ['learn', 'learning', 'mastered'].includes(s.status) ? s.status : 'learn',
     added: s.added || 'imported',
     source: typeof s.source === 'string' ? s.source : '',
+    format: s.format === 'tab' ? 'tab' : 'chordpro',
+    updatedAt: typeof s.updatedAt === 'number' ? s.updatedAt : undefined,
   };
 }
 

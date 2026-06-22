@@ -187,6 +187,13 @@ body {
 .add-tagsuggest-chip { border: 1px dashed var(--line); background: transparent; color: var(--ink-soft); border-radius: var(--radius-pill); padding: 4px 11px; font-family: var(--font-sans); font-size: var(--text-sm); font-weight: 600; cursor: pointer; transition: color .12s, border-color .12s; }
 .add-tagsuggest-chip:hover { color: var(--accent); border-color: var(--accent-tint); }
 .add-paste { margin-bottom: 8px; }
+.add-formatrow { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+.add-formatrow > label { margin: 0; }
+/* Tab kept verbatim: monospace, no wrapping (preserve column alignment), scroll.
+   Selector is .add-pre .add-tab to outrank the wrapping `.add-pre pre` rule. */
+.add-pre .add-tab { margin: 0; font-family: var(--font-mono); font-size: var(--text-sm); line-height: 1.55; color: var(--ink); white-space: pre; overflow-x: auto; -webkit-overflow-scrolling: touch; tab-size: 4; scrollbar-width: thin; }
+.add-pre .add-tab::-webkit-scrollbar { height: 6px; }
+.add-pre .add-tab::-webkit-scrollbar-thumb { background: var(--line); border-radius: 3px; }
 .add-actions { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
 .add-actions-l { display: flex; align-items: center; gap: 4px; }
 .add-preview { margin-top: 24px; }
@@ -277,6 +284,11 @@ body {
 .sv-scroller { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
 .sv-scroller::-webkit-scrollbar { display: none; }
 .sv-sheet { max-width: var(--measure-song); margin: 0 auto; padding: 13dvh 28px 24dvh; --lyric: 28px; }
+/* Tablature: verbatim monospace, no reflow (columns must stay aligned), with
+   horizontal scroll for long staves. Vertical auto-scroll still applies. */
+.sv-tab { margin: 0; font-family: var(--font-mono); font-size: max(14px, calc(var(--lyric) * 0.62)); line-height: 1.5; color: var(--ink); white-space: pre; overflow-x: auto; -webkit-overflow-scrolling: touch; tab-size: 4; scrollbar-width: thin; }
+.sv-tab::-webkit-scrollbar { height: 6px; }
+.sv-tab::-webkit-scrollbar-thumb { background: var(--line); border-radius: 3px; }
 .sv-section { margin-bottom: 28px; }
 .sv-seclabel { font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); margin-bottom: 12px; }
 .sv-line { display: flex; flex-wrap: wrap; align-items: flex-end; row-gap: 0.6em; margin-bottom: 14px; border-radius: 10px; padding: 2px 8px; margin-left: -8px; transition: opacity .18s ease; }
@@ -344,6 +356,7 @@ body {
 .tn-meter.intune .tn-dot { background: var(--good); }
 .tn-ends { display: flex; justify-content: space-between; margin-top: 4px; font-size: var(--text-xs); color: var(--ink-faint); letter-spacing: .04em; }
 .tn-cents { text-align: center; font-family: var(--font-mono); font-size: var(--text-sm); color: var(--ink-soft); margin-top: 2px; font-variant-numeric: tabular-nums; }
+.tn-instrument { display: flex; justify-content: center; margin-top: 14px; }
 .tn-strings { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 26px; }
 .tn-str { display: flex; flex-direction: column; align-items: center; gap: 4px; border: 1px solid var(--line); background: var(--surface); border-radius: var(--radius-lg); width: 60px; padding: 11px 0 9px; cursor: pointer; transition: border-color .12s, background .12s, transform .12s; }
 .tn-str:hover { border-color: var(--accent-tint); }

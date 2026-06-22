@@ -1,7 +1,7 @@
 // SongEdit — edit a saved song: title, artist, key, capo, tags, and the
 // ChordPro source directly, with a live preview. Also deletes the song.
 import React, { useState, useMemo } from 'react';
-import { Input, Button, Stepper, Card, Icon } from '../components/index.js';
+import { Input, Button, Stepper, Card, SegmentedControl, Icon } from '../components/index.js';
 import { toSections } from '../lib/chordpro.js';
 
 export function SongEdit({ song, knownTags = [], onSave, onCancel, onDelete }) {
@@ -12,7 +12,10 @@ export function SongEdit({ song, knownTags = [], onSave, onCancel, onDelete }) {
   const [tags, setTags] = useState(song.tags ? [...song.tags] : []);
   const [tagDraft, setTagDraft] = useState('');
   const [source, setSource] = useState(song.source || '');
+  const [format, setFormat] = useState(song.format === 'tab' ? 'tab' : 'chordpro');
   const [confirmDel, setConfirmDel] = useState(false);
+
+  const isTab = format === 'tab';
 
   const addTag = (t) => {
     const v = (t || '').trim().replace(/,$/, '');
@@ -22,16 +25,17 @@ export function SongEdit({ song, knownTags = [], onSave, onCancel, onDelete }) {
   const removeTag = (t) => setTags(tags.filter((x) => x !== t));
   const suggestions = knownTags.filter((t) => !tags.some((x) => x.toLowerCase() === t.toLowerCase()));
 
-  const previewSections = useMemo(() => (source.trim() ? toSections(source) : []), [source]);
+  const previewSections = useMemo(() => (!isTab && source.trim() ? toSections(source) : []), [source, isTab]);
 
   const save = () => {
     onSave(song.id, {
       title: title.trim() || 'Untitled',
       artist: artist.trim() || 'Unknown',
-      key: key.trim(),
+      key: key.trim(), // kept even in tab mode (the field is hidden, not discarded) so switching format is non-destructive
       capo,
       tags: [...tags],
       source,
+      format,
     });
   };
 
@@ -48,10 +52,12 @@ export function SongEdit({ song, knownTags = [], onSave, onCancel, onDelete }) {
         <Input label="Artist" placeholder="Artist" value={artist} onChange={(e) => setArtist(e.target.value)} />
       </div>
 
-      <div className="edit-metarow">
-        <Input label="Key" placeholder="e.g. G, F♯m" value={key} onChange={(e) => setKey(e.target.value)} className="edit-key" />
-        <Stepper label="Capo" value={capo} min={0} max={9} format={(v) => (v === 0 ? '—' : String(v))} onChange={setCapo} />
-      </div>
+      {!isTab && (
+        <div className="edit-metarow">
+          <Input label="Key" placeholder="e.g. G, F♯m" value={key} onChange={(e) => setKey(e.target.value)} className="edit-key" />
+          <Stepper label="Capo" value={capo} min={0} max={9} format={(v) => (v === 0 ? '—' : String(v))} onChange={setCapo} />
+        </div>
+      )}
 
       <div className="add-tagfield">
         <label className="fc-eyebrow add-taglabel">Tags</label>
@@ -83,8 +89,14 @@ export function SongEdit({ song, knownTags = [], onSave, onCancel, onDelete }) {
       </div>
 
       <div className="add-paste">
-        <Input label="ChordPro" multiline mono rows={12} value={source}
-          placeholder="[C]Put chords in brackets [G]above the words" onChange={(e) => setSource(e.target.value)} />
+        <div className="add-formatrow">
+          <label className="fc-eyebrow">Format</label>
+          <SegmentedControl
+            options={[{ value: 'chordpro', label: 'Chords' }, { value: 'tab', label: 'Tab' }]}
+            value={format} onChange={setFormat} />
+        </div>
+        <Input label={isTab ? 'Tab' : 'ChordPro'} multiline mono rows={12} value={source}
+          placeholder={isTab ? 'Paste tablature — kept exactly as-is' : '[C]Put chords in brackets [G]above the words'} onChange={(e) => setSource(e.target.value)} />
       </div>
 
       <div className="add-preview">
@@ -92,7 +104,9 @@ export function SongEdit({ song, knownTags = [], onSave, onCancel, onDelete }) {
           <div className="fc-eyebrow">Preview</div>
         </div>
         <Card flat className="add-pre">
-          {previewSections.length === 0
+          {isTab
+            ? (source.trim() ? <pre className="add-tab">{source}</pre> : <div className="edit-emptyprev">Nothing to preview yet.</div>)
+            : previewSections.length === 0
             ? <div className="edit-emptyprev">Nothing to preview yet.</div>
             : (
               <div className="cp">
