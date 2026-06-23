@@ -334,6 +334,13 @@ body {
   .sv-sheet { --lyric: 24px; padding-left: 22px; padding-right: 22px; }
   .sv-dock { bottom: 18px; gap: 6px; padding: 8px 10px; }
   .sv-tune { right: 8px; gap: 12px; padding: 14px; }
+  /* Header on phones: a toolbar row (back left, actions right) with the title +
+     meta on its own full-width row below, instead of being crushed into a
+     sliver between the back button and the icon cluster. */
+  .sv-top { flex-wrap: wrap; row-gap: 6px; padding: 10px 8px 6px; }
+  .sv-actions { margin-left: auto; }
+  .sv-title { order: 3; flex-basis: 100%; }
+  .sv-name { font-size: 18px; }
 }
 
 /* ---- Tuner ---- */
