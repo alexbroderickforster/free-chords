@@ -4,8 +4,6 @@
 // { label, lines: [[{chord, text}]] } shape the song view renders.
 import {
   ChordProParser,
-  ChordsOverWordsParser,
-  ChordProFormatter,
   Chord,
 } from 'chordsheetjs';
 
@@ -80,8 +78,76 @@ export function uniqueChords(source, semitones = 0) {
   return set;
 }
 
+// --- Paste cleanup: chords-over-lyrics text -> ChordPro ----------------------
+// We don't use ChordSheetJS's ChordsOverWordsParser here: it rejects a whole
+// "chord line" if any token isn't a chord it recognizes (e.g. G6sus, A7sus),
+// silently dropping those lines. This permissive pass keeps them.
+
+// A chord token: a root note, optional accidental, a suffix built only from
+// real chord atoms (so lyric words like "Cage"/"Add"/"Be" are rejected), plus
+// an optional slash bass. The atom list is intentionally loose about quality
+// symbols so non-standard ones like 6sus survive.
+const CHORD_ATOM = '(?:maj|min|sus|add|dim|aug|m|M|°|ø|Δ|\\+|-|b|#|\\d|\\(|\\))';
+const CHORD_RE = new RegExp('^[A-G][#b♯♭]?' + CHORD_ATOM + '*(?:/[A-G][#b♯♭]?)?$');
+
+const isChordToken = (t) => CHORD_RE.test(t);
+const isBlankLine = (s) => s.trim() === '';
+const isSectionHeader = (s) => /^\s*\[[^\]]+\]/.test(s); // [Intro], [Verse 1], [Hook] …
+const isChordLine = (s) => {
+  const toks = s.trim().split(/\s+/).filter(Boolean);
+  return toks.length > 0 && toks.every(isChordToken);
+};
+
+// Place each chord into the lyric line at the column where it sat. Insert
+// right-to-left so earlier offsets stay valid; a chord past the line's end
+// lands at the end.
+function mergeChordsIntoLyric(chordLine, lyricLine) {
+  const chords = [];
+  const re = /\S+/g; let m;
+  while ((m = re.exec(chordLine)) !== null) chords.push([m.index, m[0]]);
+  let out = lyricLine;
+  for (let i = chords.length - 1; i >= 0; i--) {
+    const [col, ch] = chords[i];
+    const pos = Math.min(col, out.length);
+    out = out.slice(0, pos) + '[' + ch + ']' + out.slice(pos);
+  }
+  return out;
+}
+
+const chordsOnlyLine = (chordLine) =>
+  chordLine.trim().split(/\s+/).filter(Boolean).map((c) => `[${c}]`).join(' ');
+
+const sectionComment = (s) =>
+  `{c: ${s.trim().replace(/^\[/, '').replace(/]/, ' ').replace(/\s+/g, ' ').trim()}}`;
+
 // Parse pasted chords-over-lyrics text into clean ChordPro source.
 export function cleanToChordPro(rawText) {
-  const song = new ChordsOverWordsParser().parse(rawText || '');
-  return new ChordProFormatter().format(song).trim();
+  const lines = String(rawText || '').replace(/\r\n?/g, '\n').split('\n').map((l) => l.replace(/\s+$/, ''));
+  const body = [];
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (isBlankLine(line)) { body.push(''); continue; }
+    if (isSectionHeader(line)) { body.push(sectionComment(line)); continue; }
+    if (isChordLine(line)) {
+      const next = lines[i + 1];
+      if (next != null && !isBlankLine(next) && !isChordLine(next) && !isSectionHeader(next)) {
+        body.push(mergeChordsIntoLyric(line, next));
+        i++; // the lyric line is now consumed
+      } else {
+        body.push(chordsOnlyLine(line)); // chords with nothing to sit on
+      }
+      continue;
+    }
+    body.push(line); // a lyric / annotation line
+  }
+
+  // Strip the clutter of blank separator lines, then give each section a single
+  // breathing line above it.
+  const out = [];
+  for (const l of body) {
+    if (l === '') continue;
+    if (l.startsWith('{c:') && out.length) out.push('');
+    out.push(l);
+  }
+  return out.join('\n').trim();
 }
