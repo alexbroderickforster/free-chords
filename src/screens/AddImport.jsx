@@ -1,7 +1,7 @@
 // Add / Import — paste chords (cleaned into ChordPro) or tablature (kept
 // verbatim, monospace), preview it, and save.
 import React, { useState } from 'react';
-import { Input, Button, Card, SegmentedControl, Tag, Icon } from '../components/index.js';
+import { Input, Button, Card, SegmentedControl, Stepper, Tag, Icon } from '../components/index.js';
 import { cleanToChordPro, uniqueChords, toSections } from '../lib/chordpro.js';
 import { isMostlyTab } from '../lib/tab.js';
 
@@ -21,6 +21,8 @@ E|---3-3-3-3-5-5-5---------3-3------|`;
 export function AddImport({ onSave, onBack, knownTags = [] }) {
   const [title, setTitle] = useState('');
   const [artist, setArtist] = useState('');
+  const [key, setKey] = useState('');
+  const [capo, setCapo] = useState(0);
   const [tags, setTags] = useState([]);
   const [tagDraft, setTagDraft] = useState('');
   const [raw, setRaw] = useState('');
@@ -57,7 +59,7 @@ export function AddImport({ onSave, onBack, knownTags = [] }) {
     try { const t = await navigator.clipboard.readText(); if (t) onRaw(t); }
     catch (e) { /* clipboard blocked — user can paste manually */ }
   };
-  const reset = () => { setCleaned(''); setRaw(''); setTitle(''); setArtist(''); setTags([]); setTagDraft(''); };
+  const reset = () => { setCleaned(''); setRaw(''); setTitle(''); setArtist(''); setKey(''); setCapo(0); setTags([]); setTagDraft(''); };
 
   const chords = (!isTab && cleaned) ? uniqueChords(cleaned) : [];
   const previewSections = (!isTab && cleaned) ? toSections(cleaned) : [];
@@ -66,8 +68,8 @@ export function AddImport({ onSave, onBack, knownTags = [] }) {
     onSave && onSave({
       title: title.trim() || 'Untitled',
       artist: artist.trim() || 'Unknown',
-      key: isTab ? '' : (chords[0] || ''),
-      capo: 0,
+      key: isTab ? '' : (key.trim() || chords[0] || ''), // typed key wins; fall back to the detected first chord
+      capo: isTab ? 0 : capo,
       tags: [...tags],
       starred: false,
       added: 'just now',
@@ -92,6 +94,13 @@ export function AddImport({ onSave, onBack, knownTags = [] }) {
         <Input label="Title" placeholder="Song title" value={title} onChange={(e) => setTitle(e.target.value)} />
         <Input label="Artist" placeholder="Artist" value={artist} onChange={(e) => setArtist(e.target.value)} />
       </div>
+
+      {!isTab && (
+        <div className="edit-metarow">
+          <Input label="Key" placeholder="e.g. G, F♯m" value={key} onChange={(e) => setKey(e.target.value)} className="edit-key" />
+          <Stepper label="Capo" value={capo} min={0} max={9} format={(v) => (v === 0 ? '—' : String(v))} onChange={setCapo} />
+        </div>
+      )}
 
       <div className="add-tagfield">
         <label className="fc-eyebrow add-taglabel">Tags</label>
