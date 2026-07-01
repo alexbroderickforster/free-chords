@@ -8,6 +8,7 @@ export { SegmentedControl } from './forms/SegmentedControl.jsx';
 export { Card } from './display/Card.jsx';
 export { Tag } from './display/Tag.jsx';
 export { KeyBadge, prettyKey } from './display/KeyBadge.jsx';
+export { Credit } from './display/Credit.jsx';
 export { TabBar } from './navigation/TabBar.jsx';
 export { SideNav } from './navigation/SideNav.jsx';
 export { Icon } from './Icon.jsx';

@@ -1,7 +1,7 @@
 // FreeChords app shell — responsive: left sidebar on web/desktop,
 // bottom tab bar on mobile. Ties the screens together.
 import React, { useState, useEffect, useRef } from 'react';
-import { TabBar, SideNav, IconButton, Button, Icon } from './components/index.js';
+import { TabBar, SideNav, IconButton, Button, Icon, Credit } from './components/index.js';
 import { SongView } from './screens/SongView.jsx';
 import { SongEdit } from './screens/SongEdit.jsx';
 import { Library } from './screens/Library.jsx';
@@ -306,6 +306,7 @@ export function App() {
             <Button variant="ghost" block iconLeft={<Icon n={dark ? 'sun' : 'moon'} s={18} />} onClick={toggleTheme}>
               {dark ? 'Light mode' : 'Dark mode'}
             </Button>
+            <Credit className="app-credit--sidenav" />
           </>
         }
       />

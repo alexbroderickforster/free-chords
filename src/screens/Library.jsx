@@ -1,6 +1,6 @@
 // Library — the songbook. Search, sort, group-by-artist, tag filters; quiet rows.
 import React, { useState } from 'react';
-import { Input, Tag, SegmentedControl, Switch, Button, Card, KeyBadge, Icon } from '../components/index.js';
+import { Input, Tag, SegmentedControl, Switch, Button, Card, KeyBadge, Icon, Credit } from '../components/index.js';
 import { STATUS } from '../lib/music.js';
 import { loadHelpDismissed, saveHelpDismissed } from '../lib/storage.js';
 
@@ -173,6 +173,9 @@ export function Library({ songs: songsProp, tags: knownTags = [], onOpen, onAdd,
 
       {/* On desktop, backup/sync live in the sidebar footer; this shows it on mobile. */}
       {!artistFilter && backupSlot && <div className="lib-backup-mobile">{backupSlot}</div>}
+
+      {/* Credit lives in the sidebar footer on desktop; this shows it on mobile. */}
+      <Credit className="app-credit--mobile" />
     </div>
   );
 }
