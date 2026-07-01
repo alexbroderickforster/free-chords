@@ -174,7 +174,7 @@ export function Library({ songs: songsProp, tags: knownTags = [], onOpen, onAdd,
       {/* On desktop, backup/sync live in the sidebar footer; this shows it on mobile. */}
       {!artistFilter && backupSlot && <div className="lib-backup-mobile">{backupSlot}</div>}
 
-      {/* Credit lives in the sidebar footer on desktop; this shows it on mobile. */}
+      {/* Desktop floats the credit bottom-right; on mobile it sits here in-flow. */}
       <Credit className="app-credit--mobile" />
     </div>
   );

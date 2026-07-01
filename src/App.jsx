@@ -306,7 +306,6 @@ export function App() {
             <Button variant="ghost" block iconLeft={<Icon n={dark ? 'sun' : 'moon'} s={18} />} onClick={toggleTheme}>
               {dark ? 'Light mode' : 'Dark mode'}
             </Button>
-            <Credit className="app-credit--sidenav" />
           </>
         }
       />
@@ -332,6 +331,8 @@ export function App() {
       </div>
 
       {toast && <div className={'app-toast' + (/fail|couldn|error/i.test(toast) ? ' app-toast--error' : '')}><Icon n={/fail|couldn|error/i.test(toast) ? 'circle-alert' : 'check'} s={16} />{toast}</div>}
+
+      <Credit className="app-credit--float" />
     </div>
   );
 }

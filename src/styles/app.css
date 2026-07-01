@@ -171,17 +171,29 @@ body {
 @media (min-width: 880px) { .lib-backup-mobile { display: none; } }
 
 /* ---- "Built by" credit ---- */
-.app-credit { display: flex; flex-direction: column; gap: 3px; font-size: var(--text-xs); color: var(--ink-faint); line-height: 1.5; }
-.app-credit__by { letter-spacing: .06em; text-transform: uppercase; font-size: 10px; }
-.app-credit__name { font-weight: 600; color: var(--ink-soft); text-decoration: none; width: fit-content; }
+.app-credit { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; text-align: right; font-size: 11px; color: var(--ink-faint); line-height: 1.45; }
+.app-credit__by { color: var(--ink-faint); }
+.app-credit__name { font-weight: 600; color: var(--ink-soft); text-decoration: none; }
 .app-credit__name:hover { color: var(--accent); }
 .app-credit__links { display: flex; align-items: center; gap: 6px; }
 .app-credit__links a { color: var(--ink-faint); text-decoration: none; }
 .app-credit__links a:hover { color: var(--accent); text-decoration: underline; }
 .app-credit__dot { color: var(--ink-faint); }
-/* Desktop: bottom of the sidebar footer (the sidebar is hidden on mobile). */
-.app-credit--sidenav { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
-/* Mobile: centered under the library; the desktop sidebar carries it otherwise. */
+
+/* Desktop: a floating pill pinned to the bottom-right corner, over everything.
+   Hidden on mobile (the in-flow version below takes over) and in focus mode. */
+.app-credit--float {
+  position: absolute; z-index: 6; right: 16px; bottom: 16px;
+  padding: 7px 12px;
+  background: color-mix(in oklab, var(--surface) 82%, transparent);
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+  border: 1px solid var(--line); border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+@media (max-width: 879.98px) { .app-credit--float { display: none; } }
+.app--focus .app-credit--float { display: none; }
+
+/* Mobile: sits in-flow at the bottom of the library (the desktop float is hidden). */
 .app-credit--mobile { align-items: center; text-align: center; margin-top: 28px; padding: 20px 0 6px; border-top: 1px solid var(--line); }
 .app-credit--mobile .app-credit__by { display: none; }
 @media (min-width: 880px) { .app-credit--mobile { display: none; } }
