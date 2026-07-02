@@ -112,7 +112,7 @@ export function App() {
   const updateTags = (id, tags) => updateSong(id, { tags });
 
   // Per-song playback preferences (defaults merged with any saved overrides).
-  const PREF_DEFAULTS = { transpose: 0, fontSize: 28, hideChords: false, speed: 4 };
+  const PREF_DEFAULTS = { transpose: 0, fontSize: 28, hideChords: false, speed: 4, bpm: 90, useBpm: false };
   const prefsFor = (id) => ({ ...PREF_DEFAULTS, ...(prefs[id] || {}) });
   const savePref = (id, patch) =>
     setPrefs((prev) => ({ ...prev, [id]: { ...PREF_DEFAULTS, ...(prev[id] || {}), ...patch } }));

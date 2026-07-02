@@ -26,6 +26,8 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
   const [fontSize, setFontSize] = useState(prefs.fontSize ?? 28);
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState(prefs.speed ?? 4);
+  const [bpm, setBpm] = useState(prefs.bpm ?? 90);
+  const [useBpm, setUseBpm] = useState(prefs.useBpm ?? false);
   const [tune, setTune] = useState(false);
   const [hideChords, setHideChords] = useState(prefs.hideChords ?? false);
   const [tagDraft, setTagDraft] = useState('');
@@ -38,6 +40,8 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
     setFontSize(prefs.fontSize ?? 28);
     setHideChords(prefs.hideChords ?? false);
     setSpeed(prefs.speed ?? 4);
+    setBpm(prefs.bpm ?? 90);
+    setUseBpm(prefs.useBpm ?? false);
     setPlaying(false); setTune(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [song.id]);
@@ -49,6 +53,27 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
   const changeFont = (delta) => { const n = Math.max(20, Math.min(46, fontSize + delta)); setFontSize(n); persist({ fontSize: n }); };
   const toggleHideChords = () => { const v = !hideChords; setHideChords(v); persist({ hideChords: v }); };
   const changeSpeed = (delta) => { const n = Math.max(1, Math.min(12, speed + delta)); setSpeed(n); persist({ speed: n }); };
+  // Auto-scroll tempo (advanced): a typeable BPM with tap-tempo, mapped to a
+  // scroll rate of roughly one bar per lyric line (see the scroll effect).
+  const changeBpm = (delta) => { const n = Math.max(30, Math.min(300, (parseInt(bpm, 10) || 90) + delta)); setBpm(n); persist({ bpm: n }); };
+  const commitBpm = () => { const n = Math.max(30, Math.min(300, parseInt(bpm, 10) || 90)); setBpm(n); persist({ bpm: n }); };
+  const toggleUseBpm = () => { const v = !useBpm; setUseBpm(v); persist({ useBpm: v }); };
+  const tapRef = useRef([]), tapBtnRef = useRef(null);
+  const tapTempo = () => {
+    // Flash the button so a space-bar tap gives the same feedback as a click.
+    const btn = tapBtnRef.current;
+    if (btn) { btn.classList.remove('is-tap'); void btn.offsetWidth; btn.classList.add('is-tap'); }
+    const now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+    const t = tapRef.current;
+    if (t.length && now - t[t.length - 1] > 2000) t.length = 0; // stale run — restart
+    t.push(now); if (t.length > 5) t.shift();
+    if (t.length >= 2) {
+      let sum = 0; for (let i = 1; i < t.length; i++) sum += t[i] - t[i - 1];
+      const n = Math.max(30, Math.min(300, Math.round(60000 / (sum / (t.length - 1)))));
+      setBpm(n); persist({ bpm: n });
+      if (!useBpm) { setUseBpm(true); persist({ useBpm: true }); }
+    }
+  };
 
   // Tags live on the song (persisted via the app's songbook state).
   const tags = song.tags || [];
@@ -81,14 +106,25 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
   useEffect(() => {
     if (!playing) { cancelAnimationFrame(rafRef.current); return; }
     lastRef.current = 0;
+    // For BPM mode, measure one text row's height (a .sv-seg is a chord stacked
+    // over its syllable) so tempo maps to ~one bar per row, independent of how
+    // lines wrap: pxPerSec = (bpm / 4 beats-per-bar) × rowHeight / 60.
+    const sc0 = scRef.current;
+    let rowPx = fontSize * 2.3; // fallback for tab songs (no chord/lyric segments)
+    if (sc0) {
+      const segs = [...sc0.querySelectorAll('.sv-seg')].slice(0, 40);
+      const hs = segs.map((s) => s.getBoundingClientRect().height).filter((h) => h > 0).sort((a, b) => a - b);
+      if (hs.length) rowPx = hs[Math.floor(hs.length / 2)];
+    }
     const tick = (now) => {
       if (!lastRef.current) lastRef.current = now;
       const dt = now - lastRef.current; lastRef.current = now;
       const sc = scRef.current;
       if (sc) {
-        // Quadratic curve: speed 1 is a gentle crawl (~4px/s), ramping up to a
-        // brisk scroll at 12 (~104px/s) — finer control at the slow end.
-        const pxPerSec = speed * speed * 0.7 + 3;
+        // BPM mode: ~one bar (4 beats) per text row at the given tempo.
+        // Simple mode: quadratic curve — speed 1 ≈ 4px/s crawl up to 12 ≈ 104px/s.
+        const b = Math.max(30, Math.min(300, parseInt(bpm, 10) || 90));
+        const pxPerSec = useBpm ? (b / 4) * rowPx / 60 : speed * speed * 0.7 + 3;
         accRef.current += pxPerSec * dt / 1000;
         if (accRef.current >= 1) {
           const whole = Math.floor(accRef.current); accRef.current -= whole;
@@ -101,7 +137,23 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
     };
     rafRef.current = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(rafRef.current);
-  }, [playing, speed]);
+  }, [playing, speed, useBpm, bpm, fontSize, transpose, hideChords]);
+
+  // Space bar taps the tempo too (only in BPM mode, and never while typing).
+  useEffect(() => {
+    if (!useBpm) return;
+    const onKey = (e) => {
+      if (e.code !== 'Space' && e.key !== ' ') return;
+      const t = e.target;
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return;
+      if (e.repeat) return; // holding the key shouldn't spam taps
+      e.preventDefault();
+      tapTempo();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [useBpm]);
 
   // chord-diagram popover (hover / tap) + focus init
   useEffect(() => {
@@ -233,10 +285,20 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
       <div className="sv-dock">
         <button className="sv-ghost" aria-label="Back to start" onClick={() => scRef.current && scRef.current.scrollTo({ top: 0, behavior: 'smooth' })}><Icon n="rotate-ccw" s={20} /></button>
         <button className="sv-round" aria-label="Play or pause auto-scroll" onClick={() => setPlaying((p) => !p)}><Icon n={playing ? 'pause' : 'play'} s={26} /></button>
-        <div className="sv-speed">
-          <button className="sv-sbtn" aria-label="Slower" onClick={() => changeSpeed(-1)}>−</button>
-          <div className="sv-sval"><div className="sv-snum">{speed}</div><div className="sv-slbl">Speed</div></div>
-          <button className="sv-sbtn" aria-label="Faster" onClick={() => changeSpeed(1)}>+</button>
+        <div className={'sv-speed' + (useBpm ? ' sv-speed--bpm' : '')}>
+          <button className="sv-sbtn" aria-label={useBpm ? 'Slower (−1 BPM)' : 'Slower'} onClick={() => (useBpm ? changeBpm(-1) : changeSpeed(-1))}>−</button>
+          <div className="sv-sval">
+            {useBpm
+              ? <input className="sv-snum sv-bpm-input" type="number" min="30" max="300" inputMode="numeric" aria-label="Beats per minute" value={bpm}
+                  onChange={(e) => { const raw = e.target.value; if (raw === '') { setBpm(''); return; } const n = parseInt(raw, 10); if (!isNaN(n)) setBpm(Math.min(300, n)); }}
+                  onBlur={commitBpm} onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }} />
+              : <div className="sv-snum">{speed}</div>}
+            <button className="sv-slbl sv-modelbl" onClick={toggleUseBpm} aria-label={useBpm ? 'Switch to simple speed' : 'Switch to BPM tempo'} title={useBpm ? 'Switch to simple speed' : 'Switch to BPM tempo'}>
+              {useBpm ? 'BPM' : 'Speed'}<span className="sv-modeswap" aria-hidden="true">⇄</span>
+            </button>
+          </div>
+          <button className="sv-sbtn" aria-label={useBpm ? 'Faster (+1 BPM)' : 'Faster'} onClick={() => (useBpm ? changeBpm(1) : changeSpeed(1))}>+</button>
+          {useBpm && <button ref={tapBtnRef} className="sv-tap" onClick={tapTempo} aria-label="Tap tempo (or press the space bar)" title="Tap to set tempo — or press the space bar">Tap</button>}
         </div>
       </div>
 

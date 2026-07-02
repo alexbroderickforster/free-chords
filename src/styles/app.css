@@ -344,6 +344,20 @@ body {
 .sv-sval { min-width: 70px; text-align: center; user-select: none; }
 .sv-snum { font-family: var(--font-mono); font-weight: 700; font-size: 17px; color: var(--ink); font-variant-numeric: tabular-nums; }
 .sv-slbl { font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-faint); margin-top: 1px; }
+.sv-modelbl { display: inline-flex; align-items: center; gap: 3px; border: none; background: transparent; padding: 0; cursor: pointer; }
+.sv-modelbl:hover, .sv-modelbl:hover .sv-modeswap { color: var(--accent); }
+.sv-modeswap { font-size: 9px; opacity: .75; }
+.sv-bpm-input { width: 48px; text-align: center; border: none; border-bottom: 1.5px solid var(--accent-tint); border-radius: 0; background: transparent; padding: 0 0 1px; font-family: var(--font-mono); font-weight: 700; font-size: 17px; color: var(--ink); font-variant-numeric: tabular-nums; -moz-appearance: textfield; appearance: textfield; }
+.sv-bpm-input:focus { outline: none; border-bottom-color: var(--accent); }
+.sv-bpm-input::-webkit-outer-spin-button, .sv-bpm-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.sv-tap { height: 44px; margin-left: 2px; padding: 0 13px; border: 1px solid var(--line); background: transparent; color: var(--ink-soft); border-radius: 12px; cursor: pointer; font-family: var(--font-sans); font-weight: 600; font-size: 12px; letter-spacing: .05em; text-transform: uppercase; transition: background .12s, color .12s, border-color .12s; }
+.sv-tap:hover { border-color: var(--accent-tint); color: var(--accent); }
+.sv-tap:active { background: var(--accent-soft); transform: scale(.96); }
+.sv-tap.is-tap { animation: sv-tap-flash .2s var(--ease-out); }
+@keyframes sv-tap-flash {
+  0% { background: var(--accent); border-color: var(--accent); color: var(--ink-on-accent); transform: scale(.92); }
+  100% { background: transparent; transform: scale(1); }
+}
 
 .sv-chordpop { position: fixed; z-index: 12; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow-lg); padding: 10px 12px 12px; opacity: 0; transform: translateY(4px); transition: opacity .12s ease, transform .12s ease; pointer-events: none; }
 .sv-chordpop[data-show="true"] { opacity: 1; transform: translateY(0); }
