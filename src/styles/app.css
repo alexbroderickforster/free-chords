@@ -338,6 +338,10 @@ body {
 .sv-round:active { transform: scale(.95); }
 .sv-ghost { width: 46px; height: 46px; border-radius: 50%; border: none; cursor: pointer; background: transparent; color: var(--ink-soft); display: inline-flex; align-items: center; justify-content: center; transition: background .12s, color .12s; }
 .sv-ghost:hover { background: var(--surface-hover); color: var(--ink); }
+.sv-metro { width: 44px; height: 44px; border-radius: 50%; border: none; cursor: pointer; background: transparent; color: var(--ink-soft); display: inline-flex; align-items: center; justify-content: center; flex: none; transition: background .12s, color .12s; }
+.sv-metro:hover { background: var(--surface-hover); color: var(--ink); }
+.sv-metro.is-on { background: var(--accent-soft); color: var(--accent); animation: sv-metro-pulse 1s ease-in-out infinite; }
+@keyframes sv-metro-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.55; } }
 .sv-speed { display: flex; align-items: center; gap: 2px; padding-left: 2px; }
 .sv-sbtn { width: 38px; height: 44px; border: none; background: transparent; cursor: pointer; color: var(--ink-soft); font-size: 20px; border-radius: 10px; transition: background .12s, color .12s; }
 .sv-sbtn:hover { background: var(--surface-hover); color: var(--accent); }
@@ -374,7 +378,14 @@ body {
 }
 @media (max-width: 560px) {
   .sv-sheet { --lyric: 24px; padding-left: 22px; padding-right: 22px; }
-  .sv-dock { bottom: 18px; gap: 6px; padding: 8px 10px; }
+  /* Keep the dock (esp. BPM mode + metronome) within a phone's width. */
+  .sv-dock { bottom: 18px; gap: 5px; padding: 8px; }
+  .sv-round { width: 50px; height: 50px; }
+  .sv-ghost, .sv-metro { width: 40px; height: 40px; }
+  .sv-sbtn { width: 32px; }
+  .sv-sval { min-width: 52px; }
+  .sv-bpm-input { width: 44px; }
+  .sv-tap { padding: 0 10px; font-size: 11px; }
   .sv-tune { right: 8px; gap: 12px; padding: 14px; }
   /* Header on phones: a toolbar row (back left, actions right) with the title +
      meta on its own full-width row below, instead of being crushed into a
@@ -492,8 +503,11 @@ body {
 .pl-sheet-new .pl-sheet-item-name { color: var(--accent); }
 
 /* Playlist session — dock bar + between-song countdown */
-.sv-plbar { position: absolute; left: 50%; bottom: 96px; transform: translateX(-50%); z-index: 7; display: flex; align-items: center; gap: 8px; background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 6px 8px 6px 12px; box-shadow: var(--shadow-sm); color: var(--ink-soft); }
-.sv-plbadge { font-size: var(--text-sm); font-variant-numeric: tabular-nums; }
+.sv-plbar { position: absolute; left: 50%; bottom: 96px; transform: translateX(-50%); z-index: 7; display: flex; align-items: center; gap: 6px; background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 5px 10px 5px 6px; box-shadow: var(--shadow-sm); color: var(--ink-soft); }
+.sv-plnav { width: 34px; height: 34px; border-radius: 50%; border: none; background: transparent; color: var(--ink-soft); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: background .12s, color .12s; }
+.sv-plnav:hover { background: var(--surface-hover); color: var(--accent); }
+.sv-pldiv { color: var(--ink-faint); }
+.sv-plbadge { font-size: var(--text-sm); font-variant-numeric: tabular-nums; padding: 0 2px; white-space: nowrap; }
 .sv-plexit { border: none; background: transparent; color: var(--ink-soft); cursor: pointer; font-family: var(--font-sans); font-weight: 600; font-size: var(--text-sm); padding: 4px 8px; border-radius: 999px; }
 .sv-plexit:hover { color: var(--accent); background: var(--surface-hover); }
 .sv-cd { position: absolute; left: 50%; bottom: 140px; transform: translateX(-50%); z-index: 8; display: flex; flex-direction: column; align-items: center; gap: 10px; width: max-content; max-width: 88%; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); padding: 14px 18px; }

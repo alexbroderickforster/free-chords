@@ -36,10 +36,14 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
   const [tagEditing, setTagEditing] = useState(false);
   const [countdown, setCountdown] = useState(null); // null | seconds remaining | 'done'
   const cdRef = useRef(null);
+  // Metronome — Web Audio clicks scheduled at the song's BPM (accent every 4th).
+  const [metronome, setMetronome] = useState(false);
+  const actx = useRef(null), schedRef = useRef(null), nextNoteRef = useRef(0), beatRef = useRef(0), metroBpmRef = useRef(90);
   // The scroll RAF loop must call the CURRENT playlist callbacks without being
   // in its deps (that would restart the loop and stutter). Read them via a ref.
   const latest = useRef({});
   latest.current = { playlist, onPlaylistNext };
+  metroBpmRef.current = Math.max(30, Math.min(300, parseInt(bpm, 10) || 90));
   const clearCountdown = () => { if (cdRef.current) { clearInterval(cdRef.current); cdRef.current = null; } setCountdown(null); };
   const startCountdownTick = () => {
     if (cdRef.current) return;
@@ -64,6 +68,36 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
     if (!pl.isLast) { setCountdown(COUNTDOWN_SECS); startCountdownTick(); }
     else setCountdown('done');
   };
+
+  // Metronome: a lookahead scheduler (setInterval polls, Web Audio times the
+  // clicks precisely) ticking at the current BPM, with an accent on each downbeat.
+  const metroClick = (time, accent) => {
+    const ctx = actx.current; if (!ctx) return;
+    const osc = ctx.createOscillator(), g = ctx.createGain();
+    osc.frequency.value = accent ? 1600 : 1050;
+    g.gain.setValueAtTime(0.0001, time);
+    g.gain.exponentialRampToValueAtTime(accent ? 0.5 : 0.3, time + 0.001);
+    g.gain.exponentialRampToValueAtTime(0.0001, time + 0.04);
+    osc.connect(g).connect(ctx.destination);
+    osc.start(time); osc.stop(time + 0.05);
+  };
+  const metroSchedule = () => {
+    const ctx = actx.current; if (!ctx) return;
+    const spb = 60 / metroBpmRef.current;
+    while (nextNoteRef.current < ctx.currentTime + 0.1) {
+      metroClick(nextNoteRef.current, beatRef.current % 4 === 0);
+      nextNoteRef.current += spb;
+      beatRef.current += 1;
+    }
+  };
+  const startMetronome = () => {
+    if (!actx.current) actx.current = new (window.AudioContext || window.webkitAudioContext)();
+    const ctx = actx.current; if (ctx.resume) ctx.resume();
+    beatRef.current = 0; nextNoteRef.current = ctx.currentTime + 0.08;
+    if (!schedRef.current) schedRef.current = setInterval(metroSchedule, 25);
+  };
+  const stopMetronome = () => { if (schedRef.current) { clearInterval(schedRef.current); schedRef.current = null; } };
+  const toggleMetronome = () => { const on = !metronome; setMetronome(on); on ? startMetronome() : stopMetronome(); };
   // Re-sync playback state from the song's saved prefs when the song changes.
   useEffect(() => {
     clearCountdown();
@@ -87,8 +121,12 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [song.id]);
 
-  // Cancel any running countdown when the view unmounts.
-  useEffect(() => () => { if (cdRef.current) clearInterval(cdRef.current); }, []);
+  // Cancel any running countdown / metronome when the view unmounts.
+  useEffect(() => () => {
+    if (cdRef.current) clearInterval(cdRef.current);
+    if (schedRef.current) clearInterval(schedRef.current);
+    if (actx.current) { try { actx.current.close(); } catch (e) { /* already closed */ } }
+  }, []);
 
   // Persisting setters: update local state and save the per-song pref.
   const persist = (patch) => onSavePref && onSavePref(patch);
@@ -331,9 +369,11 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
 
       {playlist && (
         <div className="sv-plbar">
-          <Icon n="list-music" s={15} />
+          <button className="sv-plnav" aria-label="Previous song" onClick={() => { clearCountdown(); onPlaylistPrev && onPlaylistPrev(); }}><Icon n="skip-back" s={16} /></button>
           <span className="sv-plbadge">{playlist.pos} / {playlist.total}</span>
-          <button className="sv-plexit" onClick={() => { clearCountdown(); onPlaylistExit && onPlaylistExit(); }}>Exit playlist</button>
+          <button className="sv-plnav" aria-label="Next song" onClick={() => { clearCountdown(); onPlaylistNext && onPlaylistNext(); }}><Icon n="skip-forward" s={16} /></button>
+          <span className="sv-pldiv" aria-hidden="true">·</span>
+          <button className="sv-plexit" onClick={() => { clearCountdown(); onPlaylistExit && onPlaylistExit(); }}>Exit</button>
         </div>
       )}
 
@@ -358,11 +398,8 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
       )}
 
       <div className="sv-dock">
-        {playlist
-          ? <button className="sv-ghost" aria-label="Previous song" onClick={() => { clearCountdown(); onPlaylistPrev && onPlaylistPrev(); }}><Icon n="skip-back" s={20} /></button>
-          : <button className="sv-ghost" aria-label="Back to start" onClick={() => scRef.current && scRef.current.scrollTo({ top: 0, behavior: 'smooth' })}><Icon n="rotate-ccw" s={20} /></button>}
+        <button className="sv-ghost" aria-label="Back to start" onClick={() => scRef.current && scRef.current.scrollTo({ top: 0, behavior: 'smooth' })}><Icon n="rotate-ccw" s={20} /></button>
         <button className="sv-round" aria-label="Play or pause auto-scroll" onClick={() => setPlaying((p) => !p)}><Icon n={playing ? 'pause' : 'play'} s={26} /></button>
-        {playlist && <button className="sv-ghost" aria-label="Next song" onClick={() => { clearCountdown(); onPlaylistNext && onPlaylistNext(); }}><Icon n="skip-forward" s={20} /></button>}
         <div className={'sv-speed' + (useBpm ? ' sv-speed--bpm' : '')}>
           <button className="sv-sbtn" aria-label={useBpm ? 'Slower (−1 BPM)' : 'Slower'} onClick={() => (useBpm ? changeBpm(-1) : changeSpeed(-1))}>−</button>
           <div className="sv-sval">
@@ -378,6 +415,7 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
           <button className="sv-sbtn" aria-label={useBpm ? 'Faster (+1 BPM)' : 'Faster'} onClick={() => (useBpm ? changeBpm(1) : changeSpeed(1))}>+</button>
           {useBpm && <button ref={tapBtnRef} className="sv-tap" onClick={tapTempo} aria-label="Tap tempo (or press the space bar)" title="Tap to set tempo — or press the space bar">Tap</button>}
         </div>
+        <button className={'sv-metro' + (metronome ? ' is-on' : '')} aria-label={metronome ? 'Turn metronome off' : 'Turn metronome on'} aria-pressed={metronome} title={`Metronome (${metroBpmRef.current} BPM)`} onClick={toggleMetronome}><Icon n="metronome" s={20} /></button>
       </div>
 
       <div className="sv-chordpop" ref={popRef}></div>

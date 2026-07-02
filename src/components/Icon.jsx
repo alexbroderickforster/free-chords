@@ -44,6 +44,16 @@ const ICONS = {
 };
 
 export function Icon({ n, s = 20, cls, ...rest }) {
+  // Metronome isn't in lucide — hand-drawn to match the 24px stroke style.
+  if (n === 'metronome') {
+    return (
+      <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" className={cls} {...rest}>
+        <path d="M9 3h6l4 18H5z" />
+        <line x1="12" y1="21" x2="15.5" y2="7" />
+        <circle cx="15.5" cy="7" r="1.3" fill="currentColor" stroke="none" />
+      </svg>
+    );
+  }
   const Cmp = ICONS[n];
   if (!Cmp) return null;
   return <Cmp size={s} strokeWidth={1.75} className={cls} {...rest} />;
