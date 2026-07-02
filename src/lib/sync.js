@@ -13,9 +13,10 @@ const FILE_NAME = 'freechords.json';
 export function isConfigured() { return !!CLIENT_ID; }
 
 // ---- Pure merge (the testable heart) ------------------------------------
-// A doc is { songs:[{id,...,updatedAt}], tags:[], prefs:{[id]:{}}, deletions:{[id]:at} }.
-// Songs merge by id with last-write-wins on updatedAt; a tombstone removes a
-// song unless the song was re-added after it. Tags union; prefs shallow-merge
+// A doc is { songs:[{id,...,updatedAt}], tags:[], prefs:{[id]:{}}, deletions:{[id]:at},
+//            playlists:[{id,...,updatedAt}], playlistDeletions:{[id]:at} }.
+// Songs and playlists merge by id with last-write-wins on updatedAt; a tombstone
+// removes an item unless it was re-added after it. Tags union; prefs shallow-merge
 // (b wins ties). Pass (remote, local) so the local device wins pref conflicts.
 export function mergeDocs(a, b) {
   a = a || {}; b = b || {};
@@ -39,12 +40,30 @@ export function mergeDocs(a, b) {
   }
   const tags = Array.from(new Set([...(a.tags || []), ...(b.tags || [])]));
   const prefs = { ...(a.prefs || {}), ...(b.prefs || {}) };
+  // Playlists: same last-write-wins-by-updatedAt + tombstone scheme as songs.
+  const playlistDeletions = { ...(a.playlistDeletions || {}) };
+  for (const [id, at] of Object.entries(b.playlistDeletions || {})) {
+    if (!playlistDeletions[id] || at > playlistDeletions[id]) playlistDeletions[id] = at;
+  }
+  const plById = {};
+  for (const p of [...(a.playlists || []), ...(b.playlists || [])]) {
+    if (!p || !p.id) continue;
+    const prev = plById[p.id];
+    if (!prev || (p.updatedAt || 0) > (prev.updatedAt || 0)) plById[p.id] = p;
+  }
+  const playlists = Object.values(plById).filter((p) => {
+    const delAt = playlistDeletions[p.id];
+    return !(delAt && delAt >= (p.updatedAt || 0));
+  });
+  for (const p of playlists) {
+    if (playlistDeletions[p.id] && (p.updatedAt || 0) > playlistDeletions[p.id]) delete playlistDeletions[p.id];
+  }
   // Theme: last-write-wins by its own timestamp.
   const themed = [];
   if (a.theme) themed.push({ theme: a.theme, themeAt: a.themeAt || 0 });
   if (b.theme) themed.push({ theme: b.theme, themeAt: b.themeAt || 0 });
   themed.sort((x, y) => y.themeAt - x.themeAt);
-  const out = { songs, tags, prefs, deletions };
+  const out = { songs, tags, prefs, deletions, playlists, playlistDeletions };
   if (themed.length) { out.theme = themed[0].theme; out.themeAt = themed[0].themeAt; }
   return out;
 }

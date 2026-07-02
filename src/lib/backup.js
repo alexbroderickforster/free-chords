@@ -21,15 +21,16 @@ function normalizeSong(s) {
 }
 
 // Trigger a download of the songbook as a JSON file.
-export function exportSongbook(songs, tags, prefs, theme) {
+export function exportSongbook(songs, tags, prefs, theme, playlists) {
   const payload = {
     app: 'FreeChords',
-    version: 3,
+    version: 4,
     exportedAt: new Date().toISOString(),
     tags: tags || [],
     songs: songs || [],
     prefs: prefs || {},
     theme: theme || 'light',
+    playlists: playlists || [],
   };
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
@@ -55,5 +56,14 @@ export function parseBackup(text) {
   const tags = data && Array.isArray(data.tags) ? data.tags : [];
   const prefs = data && data.prefs && typeof data.prefs === 'object' ? data.prefs : {};
   const theme = data && (data.theme === 'dark' || data.theme === 'light') ? data.theme : null;
-  return { songs, tags, prefs, theme };
+  const playlists = data && Array.isArray(data.playlists)
+    ? data.playlists.filter((p) => p && p.id && Array.isArray(p.songIds)).map((p) => ({
+        id: p.id,
+        name: p.name || 'Untitled playlist',
+        songIds: p.songIds.filter((s) => typeof s === 'string'),
+        createdAt: typeof p.createdAt === 'number' ? p.createdAt : Date.now(),
+        updatedAt: typeof p.updatedAt === 'number' ? p.updatedAt : Date.now(),
+      }))
+    : [];
+  return { songs, tags, prefs, theme, playlists };
 }

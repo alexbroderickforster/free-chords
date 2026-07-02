@@ -61,3 +61,17 @@ export function saveDeletions(d) { write('deletions', d); }
 // Whether the user has opted into Google Drive sync on this device.
 export function loadSyncOptIn() { return read('syncOptIn', false) === true; }
 export function saveSyncOptIn(v) { write('syncOptIn', !!v); }
+
+// Playlists: [{ id, name, songIds:[], createdAt, updatedAt }]. Default [] (no seed).
+export function loadPlaylists() {
+  const stored = read('playlists', null);
+  return Array.isArray(stored) ? stored : [];
+}
+export function savePlaylists(pls) { write('playlists', pls); }
+
+// Deletion tombstones for playlists (sync): { [playlistId]: deletedAtEpochMs }
+export function loadPlaylistDeletions() {
+  const stored = read('playlistDeletions', null);
+  return stored && typeof stored === 'object' ? stored : {};
+}
+export function savePlaylistDeletions(d) { write('playlistDeletions', d); }

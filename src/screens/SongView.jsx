@@ -20,7 +20,9 @@ function ChordLine({ segments }) {
   );
 }
 
-export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMode, onToggleFocus, onToggleStar, onCycleStatus, onUpdateTags, onEdit, prefs = {}, onSavePref, onCapo }) {
+const COUNTDOWN_SECS = 5; // pause between songs in a playlist run
+
+export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMode, onToggleFocus, onToggleStar, onCycleStatus, onUpdateTags, onEdit, prefs = {}, onSavePref, onCapo, onAddToPlaylist, playlist = null, onPlaylistNext, onPlaylistPrev, onPlaylistExit }) {
   const [transpose, setTranspose] = useState(prefs.transpose ?? 0);
   const [capo, setCapo] = useState(song.capo || 0);
   const [fontSize, setFontSize] = useState(prefs.fontSize ?? 28);
@@ -32,8 +34,39 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
   const [hideChords, setHideChords] = useState(prefs.hideChords ?? false);
   const [tagDraft, setTagDraft] = useState('');
   const [tagEditing, setTagEditing] = useState(false);
+  const [countdown, setCountdown] = useState(null); // null | seconds remaining | 'done'
+  const cdRef = useRef(null);
+  // The scroll RAF loop must call the CURRENT playlist callbacks without being
+  // in its deps (that would restart the loop and stutter). Read them via a ref.
+  const latest = useRef({});
+  latest.current = { playlist, onPlaylistNext };
+  const clearCountdown = () => { if (cdRef.current) { clearInterval(cdRef.current); cdRef.current = null; } setCountdown(null); };
+  const startCountdownTick = () => {
+    if (cdRef.current) return;
+    cdRef.current = setInterval(() => {
+      setCountdown((c) => {
+        if (typeof c !== 'number') return c;
+        if (c <= 1) {
+          clearInterval(cdRef.current); cdRef.current = null;
+          if (latest.current.onPlaylistNext) latest.current.onPlaylistNext();
+          return null;
+        }
+        return c - 1;
+      });
+    }, 1000);
+  };
+  // Auto-scroll hit the end of a song. In a playlist, roll into the next one
+  // after a short countdown (or finish on the last song).
+  const reachedBottom = () => {
+    setPlaying(false);
+    const pl = latest.current.playlist;
+    if (!pl) return;
+    if (!pl.isLast) { setCountdown(COUNTDOWN_SECS); startCountdownTick(); }
+    else setCountdown('done');
+  };
   // Re-sync playback state from the song's saved prefs when the song changes.
   useEffect(() => {
+    clearCountdown();
     setTagEditing(false); setTagDraft('');
     setCapo(song.capo || 0);
     setTranspose(prefs.transpose ?? 0);
@@ -43,8 +76,19 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
     setBpm(prefs.bpm ?? 90);
     setUseBpm(prefs.useBpm ?? false);
     setPlaying(false); setTune(false);
+    // In a playlist run, autoplay this song from the top at its own tempo. Wait a
+    // frame for layout; a song too short to scroll goes straight to the countdown.
+    if (playlist) requestAnimationFrame(() => {
+      const sc = scRef.current; if (!sc) return;
+      sc.scrollTop = 0;
+      if (sc.scrollHeight <= sc.clientHeight + 1) { setCountdown(playlist.isLast ? 'done' : COUNTDOWN_SECS); startCountdownTick(); }
+      else setPlaying(true);
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [song.id]);
+
+  // Cancel any running countdown when the view unmounts.
+  useEffect(() => () => { if (cdRef.current) clearInterval(cdRef.current); }, []);
 
   // Persisting setters: update local state and save the per-song pref.
   const persist = (patch) => onSavePref && onSavePref(patch);
@@ -129,7 +173,7 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
         if (accRef.current >= 1) {
           const whole = Math.floor(accRef.current); accRef.current -= whole;
           sc.scrollTop += whole;
-          if (sc.scrollTop + sc.clientHeight >= sc.scrollHeight - 1) setPlaying(false);
+          if (sc.scrollTop + sc.clientHeight >= sc.scrollHeight - 1) reachedBottom();
         }
       }
       updateFocus();
@@ -250,6 +294,9 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
           <button className="sv-ic" aria-label="Smaller text" onClick={() => changeFont(-2)}><Icon n="a-arrow-down" s={21} /></button>
           <button className="sv-ic" aria-label="Larger text" onClick={() => changeFont(2)}><Icon n="a-arrow-up" s={21} /></button>
           {!isTab && <button className={'sv-ic' + (tune ? ' is-on' : '')} aria-label="Transpose & capo" onClick={() => setTune((s) => !s)}><Icon n="sliders-horizontal" s={20} /></button>}
+          {onAddToPlaylist && (
+            <button className="sv-ic" aria-label="Add to playlist" onClick={() => onAddToPlaylist(song)}><Icon n="list-music" s={20} /></button>
+          )}
           {onEdit && (
             <button className="sv-ic" aria-label="Edit song" onClick={onEdit}><Icon n="pencil" s={19} /></button>
           )}
@@ -282,9 +329,40 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
       <div className="sv-fade sv-fade-top"></div>
       <div className="sv-fade sv-fade-bottom"></div>
 
+      {playlist && (
+        <div className="sv-plbar">
+          <Icon n="list-music" s={15} />
+          <span className="sv-plbadge">{playlist.pos} / {playlist.total}</span>
+          <button className="sv-plexit" onClick={() => { clearCountdown(); onPlaylistExit && onPlaylistExit(); }}>Exit playlist</button>
+        </div>
+      )}
+
+      {playlist && countdown != null && (
+        <div className="sv-cd">
+          {countdown === 'done' ? (
+            <>
+              <span className="sv-cd-text">Playlist finished</span>
+              <div className="sv-cd-row"><button className="sv-cd-btn" onClick={() => { clearCountdown(); onPlaylistExit && onPlaylistExit(); }}>Done</button></div>
+            </>
+          ) : (
+            <>
+              <span className="sv-cd-text">Up next: <b>{playlist.nextTitle}</b></span>
+              <div className="sv-cd-row">
+                <span className="sv-cd-num">{countdown}</span>
+                <button className="sv-cd-btn" onClick={() => { clearCountdown(); onPlaylistNext && onPlaylistNext(); }}>Skip</button>
+                <button className="sv-cd-btn sv-cd-btn--ghost" onClick={clearCountdown}>Cancel</button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
       <div className="sv-dock">
-        <button className="sv-ghost" aria-label="Back to start" onClick={() => scRef.current && scRef.current.scrollTo({ top: 0, behavior: 'smooth' })}><Icon n="rotate-ccw" s={20} /></button>
+        {playlist
+          ? <button className="sv-ghost" aria-label="Previous song" onClick={() => { clearCountdown(); onPlaylistPrev && onPlaylistPrev(); }}><Icon n="skip-back" s={20} /></button>
+          : <button className="sv-ghost" aria-label="Back to start" onClick={() => scRef.current && scRef.current.scrollTo({ top: 0, behavior: 'smooth' })}><Icon n="rotate-ccw" s={20} /></button>}
         <button className="sv-round" aria-label="Play or pause auto-scroll" onClick={() => setPlaying((p) => !p)}><Icon n={playing ? 'pause' : 'play'} s={26} /></button>
+        {playlist && <button className="sv-ghost" aria-label="Next song" onClick={() => { clearCountdown(); onPlaylistNext && onPlaylistNext(); }}><Icon n="skip-forward" s={20} /></button>}
         <div className={'sv-speed' + (useBpm ? ' sv-speed--bpm' : '')}>
           <button className="sv-sbtn" aria-label={useBpm ? 'Slower (−1 BPM)' : 'Slower'} onClick={() => (useBpm ? changeBpm(-1) : changeSpeed(-1))}>−</button>
           <div className="sv-sval">

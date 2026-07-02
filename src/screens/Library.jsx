@@ -16,7 +16,7 @@ function recencyDays(s) {
 }
 const sortKey = (t) => (t || '').replace(/^(the|a|an)\s+/i, '').toLowerCase();
 
-function SongRow({ song, onOpen, onArtist, onTag, activeTags, onToggleStar, onCycleStatus }) {
+function SongRow({ song, onOpen, onArtist, onTag, activeTags, onToggleStar, onCycleStatus, onAddToPlaylist }) {
   const status = song.status || 'learn';
   return (
     <Card interactive onClick={() => onOpen(song)} className="lib-row" pad={false}>
@@ -51,6 +51,13 @@ function SongRow({ song, onOpen, onArtist, onTag, activeTags, onToggleStar, onCy
         )}
       </div>
       <div className="lib-row-side">
+        {onAddToPlaylist && (
+          <span className="lib-addpl" role="button" tabIndex={0} aria-label="Add to playlist"
+            onClick={(e) => { e.stopPropagation(); onAddToPlaylist(song); }}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); onAddToPlaylist(song); } }}>
+            <Icon n="list-music" s={15} />
+          </span>
+        )}
         {song.key && <KeyBadge musicKey={song.key} />}
         <span className={'lib-status lib-status--' + status} role="button" tabIndex={0}
           aria-label={`Status: ${STATUS[status].label}. Tap to change.`}
@@ -63,7 +70,7 @@ function SongRow({ song, onOpen, onArtist, onTag, activeTags, onToggleStar, onCy
   );
 }
 
-export function Library({ songs: songsProp, tags: knownTags = [], onOpen, onAdd, artistFilter, onClearArtist, onArtist, onToggleStar, onCycleStatus, backupSlot }) {
+export function Library({ songs: songsProp, tags: knownTags = [], onOpen, onAdd, artistFilter, onClearArtist, onArtist, onToggleStar, onCycleStatus, onAddToPlaylist, backupSlot }) {
   const [q, setQ] = useState('');
   const [activeTags, setActiveTags] = useState([]);
   const [sort, setSort] = useState('recent');
@@ -108,13 +115,13 @@ export function Library({ songs: songsProp, tags: knownTags = [], onOpen, onAdd,
     body = artists.map((ar) => (
       <div className="lib-group" key={ar}>
         <div className="lib-group-head"><span>{ar}</span><span className="lib-group-n">{groups[ar].length}</span></div>
-        <div className="lib-list">{groups[ar].map((s) => <SongRow key={s.id} song={s} onOpen={onOpen} onArtist={onArtist} onTag={toggleTag} activeTags={activeTags} onToggleStar={onToggleStar} onCycleStatus={onCycleStatus} />)}</div>
+        <div className="lib-list">{groups[ar].map((s) => <SongRow key={s.id} song={s} onOpen={onOpen} onArtist={onArtist} onTag={toggleTag} activeTags={activeTags} onToggleStar={onToggleStar} onCycleStatus={onCycleStatus} onAddToPlaylist={onAddToPlaylist} />)}</div>
       </div>
     ));
   } else {
     // Normal (ungrouped) view: float starred songs to the top, then the chosen sort.
     const flat = [...songs].sort((a, b) => (b.starred ? 1 : 0) - (a.starred ? 1 : 0) || cmp(a, b));
-    body = <div className="lib-list">{flat.map((s) => <SongRow key={s.id} song={s} onOpen={onOpen} onArtist={onArtist} onTag={toggleTag} activeTags={activeTags} onToggleStar={onToggleStar} onCycleStatus={onCycleStatus} />)}</div>;
+    body = <div className="lib-list">{flat.map((s) => <SongRow key={s.id} song={s} onOpen={onOpen} onArtist={onArtist} onTag={toggleTag} activeTags={activeTags} onToggleStar={onToggleStar} onCycleStatus={onCycleStatus} onAddToPlaylist={onAddToPlaylist} />)}</div>;
   }
 
   return (
