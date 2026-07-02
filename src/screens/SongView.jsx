@@ -35,7 +35,7 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
   const [tagDraft, setTagDraft] = useState('');
   const [tagEditing, setTagEditing] = useState(false);
   const [countdown, setCountdown] = useState(null); // null | seconds remaining | 'done'
-  const cdRef = useRef(null);
+  const cdRef = useRef(null), endedRef = useRef(false); // endedRef: fire the end-of-song advance once
   // Metronome — Web Audio clicks scheduled at the song's BPM (accent every 4th).
   const [metronome, setMetronome] = useState(false);
   const actx = useRef(null), schedRef = useRef(null), nextNoteRef = useRef(0), beatRef = useRef(0), metroBpmRef = useRef(90);
@@ -48,20 +48,14 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
   const startCountdownTick = () => {
     if (cdRef.current) return;
     cdRef.current = setInterval(() => {
-      setCountdown((c) => {
-        if (typeof c !== 'number') return c;
-        if (c <= 1) {
-          clearInterval(cdRef.current); cdRef.current = null;
-          if (latest.current.onPlaylistNext) latest.current.onPlaylistNext();
-          return null;
-        }
-        return c - 1;
-      });
+      setCountdown((c) => (typeof c !== 'number' ? c : c <= 1 ? 0 : c - 1));
     }, 1000);
   };
   // Auto-scroll hit the end of a song. In a playlist, roll into the next one
   // after a short countdown (or finish on the last song).
   const reachedBottom = () => {
+    if (endedRef.current) return; // fire once per pass
+    endedRef.current = true;
     setPlaying(false);
     const pl = latest.current.playlist;
     if (!pl) return;
@@ -101,6 +95,7 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
   // Re-sync playback state from the song's saved prefs when the song changes.
   useEffect(() => {
     clearCountdown();
+    endedRef.current = false;
     setTagEditing(false); setTagDraft('');
     setCapo(song.capo || 0);
     setTranspose(prefs.transpose ?? 0);
@@ -120,6 +115,15 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [song.id]);
+
+  // When the between-song countdown reaches zero, advance to the next song.
+  // Done here (not inside the setCountdown updater) so we never call App's
+  // setState while rendering SongView.
+  useEffect(() => {
+    if (countdown !== 0) return;
+    if (cdRef.current) { clearInterval(cdRef.current); cdRef.current = null; }
+    if (latest.current.onPlaylistNext) latest.current.onPlaylistNext();
+  }, [countdown]);
 
   // Cancel any running countdown / metronome when the view unmounts.
   useEffect(() => () => {
@@ -187,6 +191,7 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
   // smooth auto-scroll
   useEffect(() => {
     if (!playing) { cancelAnimationFrame(rafRef.current); return; }
+    endedRef.current = false;
     lastRef.current = 0;
     // For BPM mode, measure one text row's height (a .sv-seg is a chord stacked
     // over its syllable) so tempo maps to ~one bar per row, independent of how
@@ -198,6 +203,7 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
       const hs = segs.map((s) => s.getBoundingClientRect().height).filter((h) => h > 0).sort((a, b) => a - b);
       if (hs.length) rowPx = hs[Math.floor(hs.length / 2)];
     }
+    const endEl = sc0 ? sc0.querySelector('.sv-end') : null;
     const tick = (now) => {
       if (!lastRef.current) lastRef.current = now;
       const dt = now - lastRef.current; lastRef.current = now;
@@ -211,7 +217,13 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
         if (accRef.current >= 1) {
           const whole = Math.floor(accRef.current); accRef.current -= whole;
           sc.scrollTop += whole;
-          if (sc.scrollTop + sc.clientHeight >= sc.scrollHeight - 1) reachedBottom();
+          // End when the "— end —" marker scrolls up into the lower-middle of the
+          // view (the song is done) — not the scroller's absolute max, which is
+          // ~20dvh of blank tail padding beyond the last line.
+          const atEnd = endEl
+            ? (endEl.getBoundingClientRect().top - sc.getBoundingClientRect().top) <= sc.clientHeight * 0.66
+            : sc.scrollTop + sc.clientHeight >= sc.scrollHeight - 1;
+          if (atEnd) reachedBottom();
         }
       }
       updateFocus();
