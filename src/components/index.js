@@ -4,6 +4,7 @@ export { IconButton } from './forms/IconButton.jsx';
 export { Stepper } from './forms/Stepper.jsx';
 export { Switch } from './forms/Switch.jsx';
 export { Input } from './forms/Input.jsx';
+export { Autocomplete } from './forms/Autocomplete.jsx';
 export { SegmentedControl } from './forms/SegmentedControl.jsx';
 export { Card } from './display/Card.jsx';
 export { Tag } from './display/Tag.jsx';

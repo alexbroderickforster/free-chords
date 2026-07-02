@@ -4,7 +4,7 @@
 import React, { useState } from 'react';
 import { Button, Card, Input, Icon } from '../components/index.js';
 
-export function Playlists({ playlists, resolvePlaylistSongs, onOpenSong, onPlayPlaylist, onCreatePlaylist, onRenamePlaylist, onDeletePlaylist, onRemoveSong, onMoveSong }) {
+export function Playlists({ playlists, albums = [], resolvePlaylistSongs, onOpenSong, onPlayPlaylist, onCreatePlaylist, onCreateAlbumPlaylist, onRenamePlaylist, onDeletePlaylist, onRemoveSong, onMoveSong }) {
   const [openId, setOpenId] = useState(null);
   const [creating, setCreating] = useState(false);
   const [draftName, setDraftName] = useState('');
@@ -25,6 +25,7 @@ export function Playlists({ playlists, resolvePlaylistSongs, onOpenSong, onPlayP
   // ---- Detail view ----
   if (open) {
     const songs = resolvePlaylistSongs(open);
+    const isAlbum = open.type === 'album';
     return (
       <div className="screen pl">
         <button className="lib-artistchip" onClick={() => { setOpenId(null); setRenaming(false); setConfirmDelete(null); }}>
@@ -39,7 +40,7 @@ export function Playlists({ playlists, resolvePlaylistSongs, onOpenSong, onPlayP
             : <h1 className="screen-title pl-detail-title">{open.name}</h1>}
           {!renaming && (
             <div className="pl-detail-actions">
-              <button className="pl-ic" aria-label="Rename playlist" onClick={startRename}><Icon n="pencil" s={17} /></button>
+              {!isAlbum && <button className="pl-ic" aria-label="Rename playlist" onClick={startRename}><Icon n="pencil" s={17} /></button>}
               {confirmDelete === open.id
                 ? <span className="pl-confirm">
                     <button className="pl-confirm-yes" onClick={() => { onDeletePlaylist(open.id); setOpenId(null); setConfirmDelete(null); }}>Delete</button>
@@ -50,12 +51,18 @@ export function Playlists({ playlists, resolvePlaylistSongs, onOpenSong, onPlayP
           )}
         </div>
 
+        {isAlbum && <div className="pl-badge">Album · auto-updating</div>}
+
         <Button variant="primary" block iconLeft={<Icon n="play" s={18} />} disabled={songs.length === 0} onClick={() => onPlayPlaylist(open.id)}>
           {songs.length === 0 ? 'No songs yet' : `Play playlist · ${songs.length} ${songs.length === 1 ? 'song' : 'songs'}`}
         </Button>
 
         {songs.length === 0 ? (
-          <div className="pl-detail-empty">This playlist is empty. Add songs from the Songs tab with the <Icon n="list-music" s={14} /> icon on each song.</div>
+          <div className="pl-detail-empty">
+            {isAlbum
+              ? 'No songs have this album yet. Add songs with this album and they’ll appear here automatically.'
+              : <>This playlist is empty. Add songs from the Songs tab with the <Icon n="list-music" s={14} /> icon on each song.</>}
+          </div>
         ) : (
           <div className="pl-songlist">
             {songs.map((s, i) => (
@@ -65,11 +72,13 @@ export function Playlists({ playlists, resolvePlaylistSongs, onOpenSong, onPlayP
                   <div className="pl-song-title">{s.title}</div>
                   <div className="pl-song-artist">{s.artist}</div>
                 </div>
-                <div className="pl-song-actions">
-                  <button className="pl-ic" aria-label="Move up" disabled={i === 0} onClick={() => onMoveSong(open.id, s.id, -1)}><Icon n="chevron-up" s={18} /></button>
-                  <button className="pl-ic" aria-label="Move down" disabled={i === songs.length - 1} onClick={() => onMoveSong(open.id, s.id, 1)}><Icon n="chevron-down" s={18} /></button>
-                  <button className="pl-ic pl-ic--danger" aria-label="Remove from playlist" onClick={() => onRemoveSong(open.id, s.id)}><Icon n="x" s={18} /></button>
-                </div>
+                {!isAlbum && (
+                  <div className="pl-song-actions">
+                    <button className="pl-ic" aria-label="Move up" disabled={i === 0} onClick={() => onMoveSong(open.id, s.id, -1)}><Icon n="chevron-up" s={18} /></button>
+                    <button className="pl-ic" aria-label="Move down" disabled={i === songs.length - 1} onClick={() => onMoveSong(open.id, s.id, 1)}><Icon n="chevron-down" s={18} /></button>
+                    <button className="pl-ic pl-ic--danger" aria-label="Remove from playlist" onClick={() => onRemoveSong(open.id, s.id)}><Icon n="x" s={18} /></button>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -95,6 +104,18 @@ export function Playlists({ playlists, resolvePlaylistSongs, onOpenSong, onPlayP
             onChange={(e) => setDraftName(e.target.value)}
             onBlur={commitCreate}
             onKeyDown={(e) => { if (e.key === 'Enter') commitCreate(); else if (e.key === 'Escape') { setCreating(false); setDraftName(''); } }} />
+          {albums.length > 0 && (
+            <div className="pl-album-suggest">
+              <span className="pl-album-suggest-lbl">Or auto-build from an album:</span>
+              {albums.map((a) => (
+                <button key={a} className="pl-album-pick"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => { const id = onCreateAlbumPlaylist(a); setCreating(false); setDraftName(''); if (id) setOpenId(id); }}>
+                  <Icon n="list-music" s={13} />{a}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -112,7 +133,7 @@ export function Playlists({ playlists, resolvePlaylistSongs, onOpenSong, onPlayP
               <Card interactive className="pl-row" pad={false} onClick={() => setOpenId(pl.id)} key={pl.id}>
                 <div className="pl-row-main">
                   <div className="pl-name">{pl.name}</div>
-                  <div className="pl-sub">{count} {count === 1 ? 'song' : 'songs'}</div>
+                  <div className="pl-sub">{pl.type === 'album' ? 'Album · ' : ''}{count} {count === 1 ? 'song' : 'songs'}</div>
                 </div>
                 <div className="pl-row-side">
                   {confirmDelete === pl.id

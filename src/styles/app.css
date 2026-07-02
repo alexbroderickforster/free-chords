@@ -378,14 +378,14 @@ body {
 }
 @media (max-width: 560px) {
   .sv-sheet { --lyric: 24px; padding-left: 22px; padding-right: 22px; }
-  /* Keep the dock (esp. BPM mode + metronome) within a phone's width. */
-  .sv-dock { bottom: 18px; gap: 5px; padding: 8px; }
-  .sv-round { width: 50px; height: 50px; }
-  .sv-ghost, .sv-metro { width: 40px; height: 40px; }
-  .sv-sbtn { width: 32px; }
-  .sv-sval { min-width: 52px; }
-  .sv-bpm-input { width: 44px; }
-  .sv-tap { padding: 0 10px; font-size: 11px; }
+  /* Keep the dock (BPM mode + key-ping + metronome = 5 controls) within a phone. */
+  .sv-dock { bottom: 18px; gap: 4px; padding: 7px; }
+  .sv-round { width: 48px; height: 48px; }
+  .sv-ghost, .sv-metro { width: 38px; height: 38px; }
+  .sv-sbtn { width: 30px; }
+  .sv-sval { min-width: 46px; }
+  .sv-bpm-input { width: 40px; }
+  .sv-tap { padding: 0 8px; font-size: 11px; }
   .sv-tune { right: 8px; gap: 12px; padding: 14px; }
   /* Header on phones: a toolbar row (back left, actions right) with the title +
      meta on its own full-width row below, instead of being crushed into a
@@ -455,6 +455,14 @@ body {
 .pl-row-side { display: flex; align-items: center; gap: 8px; flex: none; }
 
 .pl-composer { margin-bottom: 16px; }
+.pl-album-suggest { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; }
+.pl-album-suggest-lbl { font-size: var(--text-sm); color: var(--ink-faint); }
+.pl-album-pick { display: inline-flex; align-items: center; gap: 5px; border: 1px solid var(--line); background: var(--surface); color: var(--ink-soft); border-radius: 999px; padding: 6px 12px; font-family: var(--font-sans); font-size: var(--text-sm); font-weight: 600; cursor: pointer; transition: border-color .12s, color .12s; }
+.pl-album-pick:hover { border-color: var(--accent-tint); color: var(--accent); }
+.pl-album-pick svg { color: var(--accent); }
+.pl-badge { display: inline-block; margin: -8px 0 14px; color: var(--accent); background: var(--accent-soft); border-radius: var(--radius-sm); padding: 3px 9px; font-size: var(--text-2xs); font-weight: 600; letter-spacing: var(--tracking-caps); text-transform: uppercase; }
+/* Album shown on the song meta lines */
+.sv-album, .lib-album { color: var(--ink-soft); }
 
 .pl-detail-head { display: flex; align-items: center; gap: 10px; margin: 4px 0 16px; }
 .pl-detail-title { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

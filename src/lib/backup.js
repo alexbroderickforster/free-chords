@@ -8,6 +8,7 @@ function normalizeSong(s) {
     id: s.id || slugify(s.title),
     title: s.title || 'Untitled',
     artist: s.artist || 'Unknown',
+    album: typeof s.album === 'string' ? s.album : '',
     key: s.key || '',
     capo: Number(s.capo) || 0,
     tags: Array.isArray(s.tags) ? s.tags : [],
@@ -57,13 +58,18 @@ export function parseBackup(text) {
   const prefs = data && data.prefs && typeof data.prefs === 'object' ? data.prefs : {};
   const theme = data && (data.theme === 'dark' || data.theme === 'light') ? data.theme : null;
   const playlists = data && Array.isArray(data.playlists)
-    ? data.playlists.filter((p) => p && p.id && Array.isArray(p.songIds)).map((p) => ({
-        id: p.id,
-        name: p.name || 'Untitled playlist',
-        songIds: p.songIds.filter((s) => typeof s === 'string'),
-        createdAt: typeof p.createdAt === 'number' ? p.createdAt : Date.now(),
-        updatedAt: typeof p.updatedAt === 'number' ? p.updatedAt : Date.now(),
-      }))
+    ? data.playlists.filter((p) => p && p.id).map((p) => {
+        const type = p.type === 'album' ? 'album' : 'manual';
+        return {
+          id: p.id,
+          name: p.name || 'Untitled playlist',
+          type,
+          ...(type === 'album' ? { album: String(p.album || '') } : {}),
+          songIds: Array.isArray(p.songIds) ? p.songIds.filter((s) => typeof s === 'string') : [],
+          createdAt: typeof p.createdAt === 'number' ? p.createdAt : Date.now(),
+          updatedAt: typeof p.updatedAt === 'number' ? p.updatedAt : Date.now(),
+        };
+      })
     : [];
   return { songs, tags, prefs, theme, playlists };
 }

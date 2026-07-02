@@ -1,12 +1,13 @@
 // SongEdit — edit a saved song: title, artist, key, capo, tags, and the
 // ChordPro source directly, with a live preview. Also deletes the song.
 import React, { useState, useMemo } from 'react';
-import { Input, Button, Stepper, Card, SegmentedControl, Icon } from '../components/index.js';
+import { Input, Autocomplete, Button, Stepper, Card, SegmentedControl, Icon } from '../components/index.js';
 import { toSections } from '../lib/chordpro.js';
 
-export function SongEdit({ song, knownTags = [], onSave, onCancel, onDelete }) {
+export function SongEdit({ song, knownTags = [], artistOptions = [], albumOptions = [], onSave, onCancel, onDelete }) {
   const [title, setTitle] = useState(song.title || '');
   const [artist, setArtist] = useState(song.artist || '');
+  const [album, setAlbum] = useState(song.album || '');
   const [key, setKey] = useState(song.key || '');
   const [capo, setCapo] = useState(song.capo || 0);
   const [tags, setTags] = useState(song.tags ? [...song.tags] : []);
@@ -31,6 +32,7 @@ export function SongEdit({ song, knownTags = [], onSave, onCancel, onDelete }) {
     onSave(song.id, {
       title: title.trim() || 'Untitled',
       artist: artist.trim() || 'Unknown',
+      album: album.trim(),
       key: key.trim(), // kept even in tab mode (the field is hidden, not discarded) so switching format is non-destructive
       capo,
       tags: [...tags],
@@ -49,7 +51,11 @@ export function SongEdit({ song, knownTags = [], onSave, onCancel, onDelete }) {
 
       <div className="add-fields">
         <Input label="Title" placeholder="Song title" value={title} onChange={(e) => setTitle(e.target.value)} />
-        <Input label="Artist" placeholder="Artist" value={artist} onChange={(e) => setArtist(e.target.value)} />
+        <Autocomplete label="Artist" placeholder="Artist" value={artist} onChange={setArtist} options={artistOptions} />
+      </div>
+
+      <div className="add-fields">
+        <Autocomplete label="Album" placeholder="Album (optional)" value={album} onChange={setAlbum} options={albumOptions} />
       </div>
 
       {!isTab && (

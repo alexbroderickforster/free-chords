@@ -2,7 +2,7 @@
 // smooth auto-scroll + speed, transpose / capo, and hover chord diagrams.
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Stepper, prettyKey, Icon } from '../components/index.js';
-import { STATUS } from '../lib/music.js';
+import { STATUS, keyToPing } from '../lib/music.js';
 import { chordSVG, preloadChords } from '../lib/chords.js';
 import { toSections, transposeChordName } from '../lib/chordpro.js';
 
@@ -22,7 +22,7 @@ function ChordLine({ segments }) {
 
 const COUNTDOWN_SECS = 5; // pause between songs in a playlist run
 
-export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMode, onToggleFocus, onToggleStar, onCycleStatus, onUpdateTags, onEdit, prefs = {}, onSavePref, onCapo, onAddToPlaylist, playlist = null, onPlaylistNext, onPlaylistPrev, onPlaylistExit }) {
+export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMode, onToggleFocus, onToggleStar, onCycleStatus, onUpdateTags, onEdit, prefs = {}, onSavePref, onCapo, onAddToPlaylist, playlist = null, onPlaylistNext, onPlaylistPrev, onPlaylistExit, keyPing = false, onToggleKeyPing }) {
   const [transpose, setTranspose] = useState(prefs.transpose ?? 0);
   const [capo, setCapo] = useState(song.capo || 0);
   const [fontSize, setFontSize] = useState(prefs.fontSize ?? 28);
@@ -44,6 +44,7 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
   const latest = useRef({});
   latest.current = { playlist, onPlaylistNext };
   metroBpmRef.current = Math.max(30, Math.min(300, parseInt(bpm, 10) || 90));
+  const latestKeyPing = useRef(keyPing); latestKeyPing.current = keyPing;
   const clearCountdown = () => { if (cdRef.current) { clearInterval(cdRef.current); cdRef.current = null; } setCountdown(null); };
   const startCountdownTick = () => {
     if (cdRef.current) return;
@@ -59,8 +60,43 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
     setPlaying(false);
     const pl = latest.current.playlist;
     if (!pl) return;
-    if (!pl.isLast) { setCountdown(COUNTDOWN_SECS); startCountdownTick(); }
+    if (!pl.isLast) { setCountdown(COUNTDOWN_SECS); startCountdownTick(); maybeKeyPing(); }
     else setCountdown('done');
+  };
+
+  // One shared AudioContext for the metronome + the ear-training key ping.
+  const ensureAudio = () => {
+    if (!actx.current) actx.current = new (window.AudioContext || window.webkitAudioContext)();
+    if (actx.current.resume) actx.current.resume();
+    return actx.current;
+  };
+  // Ear-training ping: a soft tonic triad so the player can pitch themselves.
+  const pingChord = (freqs) => {
+    const ctx = ensureAudio();
+    const t = ctx.currentTime + 0.02;
+    freqs.forEach((f, i) => {
+      const osc = ctx.createOscillator(), g = ctx.createGain();
+      osc.type = 'sine'; osc.frequency.value = f;
+      const peak = 0.16 - i * 0.02; // root loudest, harmonies softer
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(peak, t + 0.04);
+      g.gain.setValueAtTime(peak, t + 0.45);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.75);
+      osc.connect(g).connect(ctx.destination); osc.start(t); osc.stop(t + 0.8);
+    });
+  };
+  // Sound the upcoming song's key at the start of a between-song countdown.
+  const maybeKeyPing = () => {
+    const pl = latest.current.playlist;
+    if (!latestKeyPing.current || !pl || pl.isLast || !pl.nextKey) return;
+    const p = keyToPing(pl.nextKey);
+    if (p) pingChord(p.freqs);
+  };
+  // Sound THIS song's key when you start it from the top (single-song practice).
+  const pingCurrentKey = () => {
+    if (!latestKeyPing.current) return;
+    const p = keyToPing(song.key);
+    if (p) pingChord(p.freqs);
   };
 
   // Metronome: a lookahead scheduler (setInterval polls, Web Audio times the
@@ -85,8 +121,7 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
     }
   };
   const startMetronome = () => {
-    if (!actx.current) actx.current = new (window.AudioContext || window.webkitAudioContext)();
-    const ctx = actx.current; if (ctx.resume) ctx.resume();
+    const ctx = ensureAudio();
     beatRef.current = 0; nextNoteRef.current = ctx.currentTime + 0.08;
     if (!schedRef.current) schedRef.current = setInterval(metroSchedule, 25);
   };
@@ -110,7 +145,7 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
     if (playlist) requestAnimationFrame(() => {
       const sc = scRef.current; if (!sc) return;
       sc.scrollTop = 0;
-      if (sc.scrollHeight <= sc.clientHeight + 1) { setCountdown(playlist.isLast ? 'done' : COUNTDOWN_SECS); startCountdownTick(); }
+      if (sc.scrollHeight <= sc.clientHeight + 1) { setCountdown(playlist.isLast ? 'done' : COUNTDOWN_SECS); startCountdownTick(); if (!playlist.isLast) maybeKeyPing(); }
       else setPlaying(true);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -304,6 +339,7 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
             {onArtist
               ? <button className="sv-artist" onClick={() => onArtist(song.artist)}>{song.artist}</button>
               : <span>{song.artist}</span>}
+            {song.album && <span className="sv-album">{song.album}</span>}
             {!isTab && <span className="sv-key">{prettyKey(dispKey)}</span>}
             {!isTab && (
               <span className={'sv-pill' + (capo > 0 ? ' sv-pill--capo' : ' sv-pill--muted')}>
@@ -411,7 +447,12 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
 
       <div className="sv-dock">
         <button className="sv-ghost" aria-label="Back to start" onClick={() => scRef.current && scRef.current.scrollTo({ top: 0, behavior: 'smooth' })}><Icon n="rotate-ccw" s={20} /></button>
-        <button className="sv-round" aria-label="Play or pause auto-scroll" onClick={() => setPlaying((p) => !p)}><Icon n={playing ? 'pause' : 'play'} s={26} /></button>
+        <button className="sv-round" aria-label="Play or pause auto-scroll" onClick={() => {
+          // Single-song: sound the key when starting from the top (playlist songs
+          // get their key ping via the between-song countdown instead).
+          if (!playing && !playlist) { const sc = scRef.current; if (!sc || sc.scrollTop <= 4) pingCurrentKey(); }
+          setPlaying((p) => !p);
+        }}><Icon n={playing ? 'pause' : 'play'} s={26} /></button>
         <div className={'sv-speed' + (useBpm ? ' sv-speed--bpm' : '')}>
           <button className="sv-sbtn" aria-label={useBpm ? 'Slower (−1 BPM)' : 'Slower'} onClick={() => (useBpm ? changeBpm(-1) : changeSpeed(-1))}>−</button>
           <div className="sv-sval">
@@ -427,6 +468,9 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
           <button className="sv-sbtn" aria-label={useBpm ? 'Faster (+1 BPM)' : 'Faster'} onClick={() => (useBpm ? changeBpm(1) : changeSpeed(1))}>+</button>
           {useBpm && <button ref={tapBtnRef} className="sv-tap" onClick={tapTempo} aria-label="Tap tempo (or press the space bar)" title="Tap to set tempo — or press the space bar">Tap</button>}
         </div>
+        {onToggleKeyPing && (
+          <button className={'sv-metro' + (keyPing ? ' is-on' : '')} aria-label={keyPing ? 'Turn key ping off' : 'Turn key ping on'} aria-pressed={keyPing} title="Ear-training key ping — hear the key before you play" onClick={onToggleKeyPing}><Icon n="ear" s={20} /></button>
+        )}
         <button className={'sv-metro' + (metronome ? ' is-on' : '')} aria-label={metronome ? 'Turn metronome off' : 'Turn metronome on'} aria-pressed={metronome} title={`Metronome (${metroBpmRef.current} BPM)`} onClick={toggleMetronome}><Icon n="metronome" s={20} /></button>
       </div>
 

@@ -11,7 +11,7 @@ import { TunerView } from './screens/TunerView.jsx';
 import { SONGS, ALL_TAGS } from './data/songs.js';
 import { nextStatus } from './lib/music.js';
 import { BackupControls } from './screens/Backup.jsx';
-import { loadSongs, saveSongs, loadTags, saveTags, loadTheme, saveTheme, loadThemeAt, saveThemeAt, loadPrefs, savePrefs, loadDeletions, saveDeletions, loadSyncOptIn, saveSyncOptIn, loadPlaylists, savePlaylists, loadPlaylistDeletions, savePlaylistDeletions } from './lib/storage.js';
+import { loadSongs, saveSongs, loadTags, saveTags, loadTheme, saveTheme, loadThemeAt, saveThemeAt, loadPrefs, savePrefs, loadDeletions, saveDeletions, loadSyncOptIn, saveSyncOptIn, loadPlaylists, savePlaylists, loadPlaylistDeletions, savePlaylistDeletions, loadKeyPing, saveKeyPing } from './lib/storage.js';
 import { exportSongbook, parseBackup } from './lib/backup.js';
 import { isConfigured as syncConfigured, fullSync, push as syncPush, disconnect as syncDisconnect, warmUp as warmUpSync } from './lib/sync.js';
 import './styles/app.css';
@@ -57,6 +57,7 @@ export function App() {
   const [playlistDeletions, setPlaylistDeletions] = useState(() => loadPlaylistDeletions());
   const [addToPlaylistSong, setAddToPlaylistSong] = useState(null);
   const [playSession, setPlaySession] = useState(null); // { playlistId, index } — ephemeral, per-device
+  const [keyPing, setKeyPing] = useState(() => loadKeyPing());
   const [syncStatus, setSyncStatus] = useState('idle'); // idle | syncing | synced | offline | error
   const [syncError, setSyncError] = useState(''); // human-readable reason, shown persistently
   const [themeAt, setThemeAt] = useState(() => loadThemeAt());
@@ -75,6 +76,7 @@ export function App() {
   useEffect(() => { saveDeletions(deletions); }, [deletions]);
   useEffect(() => { savePlaylists(playlists); }, [playlists]);
   useEffect(() => { savePlaylistDeletions(playlistDeletions); }, [playlistDeletions]);
+  useEffect(() => { saveKeyPing(keyPing); }, [keyPing]);
 
   // Register any tag that appears on a song into the known-tags list.
   useEffect(() => {
@@ -126,16 +128,41 @@ export function App() {
 
   // ---- Playlists: ordered sets of song ids, synced like songs (LWW+tombstones) ----
   const songById = useMemo(() => new Map(songs.map((s) => [s.id, s])), [songs]);
-  // Dangling ids (song deleted on another device) are skipped at read time, never pruned.
-  const resolvePlaylistSongs = (pl) => (pl?.songIds || []).map((sid) => songById.get(sid)).filter(Boolean);
+  const albumKey = (a) => (a || '').trim().toLowerCase();
+  // Album playlists derive their membership from the songs' album; manual ones use
+  // songIds (dangling ids — a song deleted on another device — are skipped, never pruned).
+  const resolvePlaylistSongs = (pl) => {
+    if (!pl) return [];
+    if (pl.type === 'album') {
+      const k = albumKey(pl.album);
+      return k ? songs.filter((s) => albumKey(s.album) === k) : [];
+    }
+    return (pl.songIds || []).map((sid) => songById.get(sid)).filter(Boolean);
+  };
+  // Distinct artists / albums already in the library, for form autocomplete.
+  const artistOptions = useMemo(() => Array.from(new Set(songs.map((s) => (s.artist || '').trim()).filter((a) => a && a !== 'Unknown'))).sort((a, b) => a.localeCompare(b)), [songs]);
+  const albumOptions = useMemo(() => Array.from(new Set(songs.map((s) => (s.album || '').trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b)), [songs]);
 
   const createPlaylist = (name) => {
     const now = Date.now();
     const ids = new Set(playlists.map((p) => p.id));
     let base = slugify(name || 'playlist'), id = base, n = 2;
     while (ids.has(id)) id = `${base}-${n++}`;
-    const pl = { id, name: (name || 'Untitled playlist').trim() || 'Untitled playlist', songIds: [], createdAt: now, updatedAt: now };
+    const pl = { id, name: (name || 'Untitled playlist').trim() || 'Untitled playlist', type: 'manual', songIds: [], createdAt: now, updatedAt: now };
     setPlaylists((prev) => [pl, ...prev]);
+    return id;
+  };
+  // Smart playlist: membership always tracks every song of this album.
+  const createAlbumPlaylist = (album) => {
+    const name = (album || '').trim();
+    if (!name) return null;
+    const existing = playlists.find((p) => p.type === 'album' && albumKey(p.album) === albumKey(name));
+    if (existing) { setToast('Playlist already exists for ' + name); return existing.id; }
+    const now = Date.now();
+    const ids = new Set(playlists.map((p) => p.id));
+    let base = slugify('album-' + name), id = base, n = 2;
+    while (ids.has(id)) id = `${base}-${n++}`;
+    setPlaylists((prev) => [{ id, name, type: 'album', album: name, songIds: [], createdAt: now, updatedAt: now }, ...prev]);
     return id;
   };
   const updatePlaylist = (id, patch) =>
@@ -363,19 +390,20 @@ export function App() {
     pos: playSession.index + 1,
     total: plList.length,
     nextTitle: plList[playSession.index + 1] ? plList[playSession.index + 1].title : null,
+    nextKey: plList[playSession.index + 1] ? plList[playSession.index + 1].key : null,
     isLast: playSession.index + 1 >= plList.length,
   } : null;
 
   const screen = (song && editing)
-    ? <SongEdit song={song} knownTags={knownTags} onSave={saveEdit} onCancel={() => setEditing(false)} onDelete={deleteSong} />
+    ? <SongEdit song={song} knownTags={knownTags} artistOptions={artistOptions} albumOptions={albumOptions} onSave={saveEdit} onCancel={() => setEditing(false)} onDelete={deleteSong} />
     : song
-    ? <SongView song={song} onBack={closeSong} onArtist={goArtist} dark={dark} onToggleTheme={toggleTheme} focusMode={focus} onToggleFocus={() => setFocus((f) => !f)} onToggleStar={toggleStar} onCycleStatus={cycleStatus} onUpdateTags={updateTags} onEdit={() => setEditing(true)} prefs={prefsFor(song.id)} onSavePref={(patch) => savePref(song.id, patch)} onCapo={(v) => updateSong(song.id, { capo: v })} onAddToPlaylist={setAddToPlaylistSong} playlist={svPlaylist} onPlaylistNext={playlistNext} onPlaylistPrev={playlistPrev} onPlaylistExit={exitPlaylist} />
+    ? <SongView song={song} onBack={closeSong} onArtist={goArtist} dark={dark} onToggleTheme={toggleTheme} focusMode={focus} onToggleFocus={() => setFocus((f) => !f)} onToggleStar={toggleStar} onCycleStatus={cycleStatus} onUpdateTags={updateTags} onEdit={() => setEditing(true)} prefs={prefsFor(song.id)} onSavePref={(patch) => savePref(song.id, patch)} onCapo={(v) => updateSong(song.id, { capo: v })} onAddToPlaylist={setAddToPlaylistSong} playlist={svPlaylist} onPlaylistNext={playlistNext} onPlaylistPrev={playlistPrev} onPlaylistExit={exitPlaylist} keyPing={keyPing} onToggleKeyPing={() => setKeyPing((v) => !v)} />
     : (
       <main className="app-body">
         {tab === 'songs' && <Library songs={songs} tags={knownTags} onOpen={openSong} onAdd={() => setTab('add')} artistFilter={artistFilter} onClearArtist={() => setArtistFilter(null)} onArtist={goArtist} onToggleStar={toggleStar} onCycleStatus={cycleStatus} onAddToPlaylist={setAddToPlaylistSong}
           backupSlot={<BackupControls className="bk--mobile" {...backupProps} />} />}
-        {tab === 'playlists' && <Playlists playlists={playlists} resolvePlaylistSongs={resolvePlaylistSongs} onOpenSong={openSong} onPlayPlaylist={startPlaylist} onCreatePlaylist={createPlaylist} onRenamePlaylist={renamePlaylist} onDeletePlaylist={deletePlaylist} onRemoveSong={removeSongFromPlaylist} onMoveSong={movePlaylistSong} />}
-        {tab === 'add' && <AddImport onBack={() => setTab('songs')} knownTags={knownTags} onSave={addSong} />}
+        {tab === 'playlists' && <Playlists playlists={playlists} albums={albumOptions} resolvePlaylistSongs={resolvePlaylistSongs} onOpenSong={openSong} onPlayPlaylist={startPlaylist} onCreatePlaylist={createPlaylist} onCreateAlbumPlaylist={createAlbumPlaylist} onRenamePlaylist={renamePlaylist} onDeletePlaylist={deletePlaylist} onRemoveSong={removeSongFromPlaylist} onMoveSong={movePlaylistSong} />}
+        {tab === 'add' && <AddImport onBack={() => setTab('songs')} knownTags={knownTags} artistOptions={artistOptions} albumOptions={albumOptions} onSave={addSong} />}
         {tab === 'tuner' && <TunerView />}
       </main>
     );
@@ -427,7 +455,7 @@ export function App() {
               <button className="pl-sheet-x" aria-label="Close" onClick={() => setAddToPlaylistSong(null)}><Icon n="x" s={18} /></button>
             </div>
             <div className="pl-sheet-list">
-              {playlists.map((pl) => {
+              {playlists.filter((pl) => pl.type !== 'album').map((pl) => {
                 const has = pl.songIds.includes(addToPlaylistSong.id);
                 return (
                   <button className="pl-sheet-item" key={pl.id} onClick={() => {

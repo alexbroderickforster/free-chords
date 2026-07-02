@@ -1,7 +1,7 @@
 // Add / Import — paste chords (cleaned into ChordPro) or tablature (kept
 // verbatim, monospace), preview it, and save.
 import React, { useState } from 'react';
-import { Input, Button, Card, SegmentedControl, Stepper, Tag, Icon } from '../components/index.js';
+import { Input, Autocomplete, Button, Card, SegmentedControl, Stepper, Tag, Icon } from '../components/index.js';
 import { cleanToChordPro, uniqueChords, toSections } from '../lib/chordpro.js';
 import { isMostlyTab } from '../lib/tab.js';
 
@@ -18,9 +18,10 @@ D|---------------------------------|
 A|-----------------5-5-3-----------|
 E|---3-3-3-3-5-5-5---------3-3------|`;
 
-export function AddImport({ onSave, onBack, knownTags = [] }) {
+export function AddImport({ onSave, onBack, knownTags = [], artistOptions = [], albumOptions = [] }) {
   const [title, setTitle] = useState('');
   const [artist, setArtist] = useState('');
+  const [album, setAlbum] = useState('');
   const [key, setKey] = useState('');
   const [capo, setCapo] = useState(0);
   const [tags, setTags] = useState([]);
@@ -59,7 +60,7 @@ export function AddImport({ onSave, onBack, knownTags = [] }) {
     try { const t = await navigator.clipboard.readText(); if (t) onRaw(t); }
     catch (e) { /* clipboard blocked — user can paste manually */ }
   };
-  const reset = () => { setCleaned(''); setRaw(''); setTitle(''); setArtist(''); setKey(''); setCapo(0); setTags([]); setTagDraft(''); };
+  const reset = () => { setCleaned(''); setRaw(''); setTitle(''); setArtist(''); setAlbum(''); setKey(''); setCapo(0); setTags([]); setTagDraft(''); };
 
   const chords = (!isTab && cleaned) ? uniqueChords(cleaned) : [];
   const previewSections = (!isTab && cleaned) ? toSections(cleaned) : [];
@@ -68,6 +69,7 @@ export function AddImport({ onSave, onBack, knownTags = [] }) {
     onSave && onSave({
       title: title.trim() || 'Untitled',
       artist: artist.trim() || 'Unknown',
+      album: album.trim(),
       key: isTab ? '' : (key.trim() || chords[0] || ''), // typed key wins; fall back to the detected first chord
       capo: isTab ? 0 : capo,
       tags: [...tags],
@@ -92,7 +94,11 @@ export function AddImport({ onSave, onBack, knownTags = [] }) {
 
       <div className="add-fields">
         <Input label="Title" placeholder="Song title" value={title} onChange={(e) => setTitle(e.target.value)} />
-        <Input label="Artist" placeholder="Artist" value={artist} onChange={(e) => setArtist(e.target.value)} />
+        <Autocomplete label="Artist" placeholder="Artist" value={artist} onChange={setArtist} options={artistOptions} />
+      </div>
+
+      <div className="add-fields">
+        <Autocomplete label="Album" placeholder="Album (optional)" value={album} onChange={setAlbum} options={albumOptions} />
       </div>
 
       {!isTab && (

@@ -62,6 +62,10 @@ export function saveDeletions(d) { write('deletions', d); }
 export function loadSyncOptIn() { return read('syncOptIn', false) === true; }
 export function saveSyncOptIn(v) { write('syncOptIn', !!v); }
 
+// Ear-training "key ping" toggle (device-local practice pref, default on).
+export function loadKeyPing() { return read('keyPing', true) === true; }
+export function saveKeyPing(v) { write('keyPing', !!v); }
+
 // Playlists: [{ id, name, songIds:[], createdAt, updatedAt }]. Default [] (no seed).
 export function loadPlaylists() {
   const stored = read('playlists', null);

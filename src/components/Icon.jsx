@@ -5,7 +5,7 @@ import {
   Library, AudioLines, Sun, Moon, Check, ArrowLeft, Star, X, Plus, Music,
   AArrowDown, AArrowUp, SlidersHorizontal, Minimize2, Maximize2, RotateCcw,
   Play, Pause, Search, Clipboard, Wand2, Mic, Download, Upload, Pencil, Trash2, CircleAlert,
-  ListMusic, SkipBack, SkipForward, ChevronUp, ChevronDown,
+  ListMusic, SkipBack, SkipForward, ChevronUp, ChevronDown, Ear,
 } from 'lucide-react';
 
 const ICONS = {
@@ -41,6 +41,7 @@ const ICONS = {
   'skip-forward': SkipForward,
   'chevron-up': ChevronUp,
   'chevron-down': ChevronDown,
+  'ear': Ear,
 };
 
 export function Icon({ n, s = 20, cls, ...rest }) {

@@ -36,6 +36,7 @@ function SongRow({ song, onOpen, onArtist, onTag, activeTags, onToggleStar, onCy
                 onClick={(e) => { e.stopPropagation(); onArtist(song.artist); }}
                 onKeyDown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); onArtist(song.artist); } }}>{song.artist}</span>
             : <span>{song.artist}</span>}
+          {song.album && <><span className="lib-dot">·</span><span className="lib-album">{song.album}</span></>}
           <span className="lib-dot">·</span>
           {song.added === 'sample' ? <span>Sample</span> : <span>Added {song.added}</span>}
         </div>
