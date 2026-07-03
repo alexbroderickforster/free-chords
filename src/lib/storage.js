@@ -66,6 +66,11 @@ export function saveSyncOptIn(v) { write('syncOptIn', !!v); }
 export function loadKeyPing() { return read('keyPing', true) === true; }
 export function saveKeyPing(v) { write('keyPing', !!v); }
 
+// Claude API key for image import. Device-local only — deliberately NOT part of
+// the Drive-sync payload (it's a secret and must never leave this device).
+export function loadApiKey() { return read('apiKey', '') || ''; }
+export function saveApiKey(v) { write('apiKey', (v || '').trim()); }
+
 // Playlists: [{ id, name, songIds:[], createdAt, updatedAt }]. Default [] (no seed).
 export function loadPlaylists() {
   const stored = read('playlists', null);

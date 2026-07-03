@@ -1,9 +1,11 @@
 // Add / Import — paste chords (cleaned into ChordPro) or tablature (kept
-// verbatim, monospace), preview it, and save.
-import React, { useState } from 'react';
+// verbatim, monospace) or upload a screenshot (read by Claude vision, or
+// on-device OCR when no key is set), preview it, and save.
+import React, { useState, useRef } from 'react';
 import { Input, Autocomplete, Button, Card, SegmentedControl, Stepper, Tag, Icon } from '../components/index.js';
 import { cleanToChordPro, uniqueChords, toSections } from '../lib/chordpro.js';
 import { isMostlyTab } from '../lib/tab.js';
+import { extractSongFromImage } from '../lib/imageImport.js';
 
 const SAMPLE = `C               G
 Slip inside the eye of your mind
@@ -18,7 +20,7 @@ D|---------------------------------|
 A|-----------------5-5-3-----------|
 E|---3-3-3-3-5-5-5---------3-3------|`;
 
-export function AddImport({ onSave, onBack, knownTags = [], artistOptions = [], albumOptions = [] }) {
+export function AddImport({ onSave, onBack, knownTags = [], artistOptions = [], albumOptions = [], apiKey = '' }) {
   const [title, setTitle] = useState('');
   const [artist, setArtist] = useState('');
   const [album, setAlbum] = useState('');
@@ -31,6 +33,13 @@ export function AddImport({ onSave, onBack, knownTags = [], artistOptions = [], 
   const [view, setView] = useState('preview');
   const [format, setFormat] = useState('chordpro'); // 'chordpro' | 'tab'
   const [formatTouched, setFormatTouched] = useState(false);
+
+  // Image upload state.
+  const imgRef = useRef(null);
+  const [imgBusy, setImgBusy] = useState(''); // '' | 'preparing' | 'claude' | 'ocr'
+  const [imgProgress, setImgProgress] = useState(0);
+  const [imgMethod, setImgMethod] = useState(null); // 'claude' | 'ocr' after success
+  const [imgError, setImgError] = useState('');
 
   const isTab = format === 'tab';
 
@@ -60,7 +69,41 @@ export function AddImport({ onSave, onBack, knownTags = [], artistOptions = [], 
     try { const t = await navigator.clipboard.readText(); if (t) onRaw(t); }
     catch (e) { /* clipboard blocked — user can paste manually */ }
   };
-  const reset = () => { setCleaned(''); setRaw(''); setTitle(''); setArtist(''); setAlbum(''); setKey(''); setCapo(0); setTags([]); setTagDraft(''); };
+  const reset = () => { setCleaned(''); setRaw(''); setTitle(''); setArtist(''); setAlbum(''); setKey(''); setCapo(0); setTags([]); setTagDraft(''); setImgMethod(null); setImgError(''); };
+
+  // Upload a screenshot → Claude vision (if a key is set) or on-device OCR.
+  const onPickImage = async (e) => {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if (!file) return;
+    setImgError(''); setImgMethod(null); setImgProgress(0); setImgBusy('preparing');
+    try {
+      const r = await extractSongFromImage({
+        file, apiKey,
+        onStatus: (step, prog) => { setImgBusy(step); if (prog != null) setImgProgress(prog); },
+      });
+      setFormat(r.format); setFormatTouched(true);
+      setRaw(r.rawText);
+      setCleaned(r.chordpro);
+      setView('preview');
+      if (r.title && !title.trim()) setTitle(r.title);
+      if (r.artist && !artist.trim()) setArtist(r.artist);
+      if (r.key && !key.trim()) setKey(r.key);
+      if (r.capo && !capo) setCapo(r.capo);
+      setImgMethod(r.method);
+    } catch (err) {
+      setImgError((err && err.message) || 'Couldn’t read that image.');
+    } finally {
+      setImgBusy(''); setImgProgress(0);
+    }
+  };
+
+  const imgStatusText = () => {
+    if (imgBusy === 'preparing') return 'Preparing image…';
+    if (imgBusy === 'claude') return 'Reading chords with Claude…';
+    if (imgBusy === 'ocr') return `Reading on-device with OCR…${imgProgress ? ` ${Math.round(imgProgress * 100)}%` : ''}`;
+    return '';
+  };
 
   const chords = (!isTab && cleaned) ? uniqueChords(cleaned) : [];
   const previewSections = (!isTab && cleaned) ? toSections(cleaned) : [];
@@ -89,7 +132,7 @@ export function AddImport({ onSave, onBack, knownTags = [], artistOptions = [], 
       <div className="screen-head">
         <div className="screen-eyebrow fc-eyebrow">New song</div>
         <h1 className="screen-title">Add a song</h1>
-        <p className="screen-lead">Paste chords or tab copied from a webpage. Chords get lined up over the lyrics; tab is kept exactly as-is.</p>
+        <p className="screen-lead">Paste chords or tab copied from a webpage — or upload a screenshot and let it read the chords for you. Chords get lined up over the lyrics; tab is kept exactly as-is.</p>
       </div>
 
       <div className="add-fields">
@@ -144,6 +187,31 @@ export function AddImport({ onSave, onBack, knownTags = [], artistOptions = [], 
             options={[{ value: 'chordpro', label: 'Chords' }, { value: 'tab', label: 'Tab' }]}
             value={format} onChange={pickFormat} />
         </div>
+
+        <div className="add-imgblock">
+          <div className="add-imgrow">
+            <Button variant="quiet" iconLeft={<Icon n="image" s={17} />} onClick={() => imgRef.current && imgRef.current.click()} disabled={!!imgBusy}>
+              {imgBusy ? 'Reading image…' : 'Upload screenshot'}
+            </Button>
+            <input ref={imgRef} type="file" accept="image/*" hidden onChange={onPickImage} />
+            <span className="add-imghint">
+              {apiKey
+                ? 'Reads chords with Claude vision.'
+                : <>No Claude API key — uses on-device OCR (rougher). Add a key in Backup &amp; Sync for best results.</>}
+            </span>
+          </div>
+          {imgBusy && <div className="add-imgstatus"><span className="add-imgspin" aria-hidden="true" />{imgStatusText()}</div>}
+          {imgError && <div className="add-imgmsg add-imgmsg--err"><Icon n="circle-alert" s={14} />{imgError}</div>}
+          {imgMethod && !imgBusy && !imgError && (
+            <div className="add-imgmsg add-imgmsg--ok">
+              <Icon n="check" s={14} />
+              {imgMethod === 'claude'
+                ? 'Read with Claude — review and tidy below before saving.'
+                : 'Read with on-device OCR — alignment is rough, so check it over before saving.'}
+            </div>
+          )}
+        </div>
+
         <Input label={isTab ? 'Paste tab' : 'Paste chords'} multiline mono rows={9} value={raw}
           placeholder={isTab ? TAB_SAMPLE : SAMPLE} onChange={(e) => onRaw(e.target.value)} />
         <div className="add-actions">

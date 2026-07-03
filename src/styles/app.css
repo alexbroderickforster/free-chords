@@ -159,6 +159,18 @@ body {
 .bk-error { display: flex; align-items: flex-start; gap: 6px; color: var(--danger); font-size: var(--text-sm); line-height: 1.45; margin: 8px 2px 0; }
 .bk-error svg { flex: none; margin-top: 2px; }
 
+/* Claude API key field (image import) */
+.bk-key { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); }
+.bk-key-saved { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding: 0 2px; }
+.bk-key-mask { display: inline-flex; align-items: center; gap: 6px; font-size: var(--text-sm); font-weight: 600; color: var(--ink-soft); }
+.bk-key-mask svg { color: var(--ink-faint); flex: none; }
+.bk-key-links { display: flex; align-items: center; gap: 8px; }
+.bk-key-edit { display: flex; flex-direction: column; gap: 8px; }
+.bk-key-actions { display: flex; align-items: center; gap: 12px; }
+.bk-key-note { font-size: var(--text-xs); color: var(--ink-faint); line-height: 1.5; margin: 8px 2px 0; }
+.bk-key-note a { color: var(--accent); text-decoration: none; font-weight: 600; }
+.bk-key-note a:hover { text-decoration: underline; }
+
 /* In the desktop sidebar footer: stack the export/import buttons. */
 .bk--sidenav .bk-files { flex-direction: column; }
 .bk--sidenav .bk-files .fc-btn { width: 100%; }
@@ -224,6 +236,19 @@ body {
 .add-pre .add-tab::-webkit-scrollbar-thumb { background: var(--line); border-radius: 3px; }
 .add-actions { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
 .add-actions-l { display: flex; align-items: center; gap: 4px; }
+
+/* Image upload (screenshot → Claude vision, or on-device OCR) */
+.add-imgblock { margin-bottom: 14px; }
+.add-imgrow { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.add-imghint { flex: 1; min-width: 150px; font-size: var(--text-xs); color: var(--ink-faint); line-height: 1.45; }
+.add-imgstatus { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: var(--text-sm); font-weight: 600; color: var(--ink-soft); }
+.add-imgspin { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--accent-tint); border-top-color: var(--accent); animation: fc-spin .7s linear infinite; flex: none; }
+@keyframes fc-spin { to { transform: rotate(360deg); } }
+.add-imgmsg { display: flex; align-items: flex-start; gap: 6px; margin-top: 10px; font-size: var(--text-sm); line-height: 1.45; }
+.add-imgmsg svg { flex: none; margin-top: 2px; }
+.add-imgmsg--ok { color: var(--ink-soft); }
+.add-imgmsg--ok svg { color: var(--good); }
+.add-imgmsg--err { color: var(--danger); }
 .add-preview { margin-top: 24px; }
 .add-preview-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
 .add-chips { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 12px; }

@@ -11,7 +11,7 @@ import { TunerView } from './screens/TunerView.jsx';
 import { SONGS, ALL_TAGS } from './data/songs.js';
 import { nextStatus } from './lib/music.js';
 import { BackupControls } from './screens/Backup.jsx';
-import { loadSongs, saveSongs, loadTags, saveTags, loadTheme, saveTheme, loadThemeAt, saveThemeAt, loadPrefs, savePrefs, loadDeletions, saveDeletions, loadSyncOptIn, saveSyncOptIn, loadPlaylists, savePlaylists, loadPlaylistDeletions, savePlaylistDeletions, loadKeyPing, saveKeyPing } from './lib/storage.js';
+import { loadSongs, saveSongs, loadTags, saveTags, loadTheme, saveTheme, loadThemeAt, saveThemeAt, loadPrefs, savePrefs, loadDeletions, saveDeletions, loadSyncOptIn, saveSyncOptIn, loadPlaylists, savePlaylists, loadPlaylistDeletions, savePlaylistDeletions, loadKeyPing, saveKeyPing, loadApiKey, saveApiKey } from './lib/storage.js';
 import { exportSongbook, parseBackup } from './lib/backup.js';
 import { isConfigured as syncConfigured, fullSync, push as syncPush, disconnect as syncDisconnect, warmUp as warmUpSync } from './lib/sync.js';
 import './styles/app.css';
@@ -58,6 +58,7 @@ export function App() {
   const [addToPlaylistSong, setAddToPlaylistSong] = useState(null);
   const [playSession, setPlaySession] = useState(null); // { playlistId, index } — ephemeral, per-device
   const [keyPing, setKeyPing] = useState(() => loadKeyPing());
+  const [apiKey, setApiKey] = useState(() => loadApiKey());
   const [syncStatus, setSyncStatus] = useState('idle'); // idle | syncing | synced | offline | error
   const [syncError, setSyncError] = useState(''); // human-readable reason, shown persistently
   const [themeAt, setThemeAt] = useState(() => loadThemeAt());
@@ -77,6 +78,7 @@ export function App() {
   useEffect(() => { savePlaylists(playlists); }, [playlists]);
   useEffect(() => { savePlaylistDeletions(playlistDeletions); }, [playlistDeletions]);
   useEffect(() => { saveKeyPing(keyPing); }, [keyPing]);
+  useEffect(() => { saveApiKey(apiKey); }, [apiKey]);
 
   // Register any tag that appears on a song into the known-tags list.
   useEffect(() => {
@@ -374,6 +376,7 @@ export function App() {
     onExport: exportData, onImport: importData,
     syncConfigured: syncConfigured(), syncOn, syncStatus, syncError, lastSyncedAt,
     onConnectSync: connectSync, onSyncNow: () => syncNow(true), onDisconnectSync: disconnectSync,
+    apiKey, onSaveApiKey: setApiKey,
   };
 
   const markSrc = `${import.meta.env.BASE_URL}freechords-mark.svg`;
@@ -403,7 +406,7 @@ export function App() {
         {tab === 'songs' && <Library songs={songs} tags={knownTags} onOpen={openSong} onAdd={() => setTab('add')} artistFilter={artistFilter} onClearArtist={() => setArtistFilter(null)} onArtist={goArtist} onToggleStar={toggleStar} onCycleStatus={cycleStatus} onAddToPlaylist={setAddToPlaylistSong}
           backupSlot={<BackupControls className="bk--mobile" {...backupProps} />} />}
         {tab === 'playlists' && <Playlists playlists={playlists} albums={albumOptions} resolvePlaylistSongs={resolvePlaylistSongs} onOpenSong={openSong} onPlayPlaylist={startPlaylist} onCreatePlaylist={createPlaylist} onCreateAlbumPlaylist={createAlbumPlaylist} onRenamePlaylist={renamePlaylist} onDeletePlaylist={deletePlaylist} onRemoveSong={removeSongFromPlaylist} onMoveSong={movePlaylistSong} />}
-        {tab === 'add' && <AddImport onBack={() => setTab('songs')} knownTags={knownTags} artistOptions={artistOptions} albumOptions={albumOptions} onSave={addSong} />}
+        {tab === 'add' && <AddImport onBack={() => setTab('songs')} knownTags={knownTags} artistOptions={artistOptions} albumOptions={albumOptions} apiKey={apiKey} onSave={addSong} />}
         {tab === 'tuner' && <TunerView />}
       </main>
     );
