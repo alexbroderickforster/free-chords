@@ -489,6 +489,15 @@ body {
 .sv-scroller { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
 .sv-scroller::-webkit-scrollbar { display: none; }
 .sv-sheet { max-width: var(--measure-song); margin: 0 auto; padding: 13dvh 28px 24dvh; --lyric: 28px; }
+/* Playlist song transitions: the next song fades in on arrival; the outgoing one
+   fades out just before it's swapped, for a clean hand-off between songs. */
+.sv-sheet--anim { animation: sv-song-in 320ms ease both; }
+@keyframes sv-song-in { from { opacity: 0; } to { opacity: 1; } }
+.sv-sheet.sv-leaving { animation: none; opacity: 0; transition: opacity 220ms ease; }
+@media (prefers-reduced-motion: reduce) {
+  .sv-sheet--anim { animation: none; }
+  .sv-sheet.sv-leaving { transition: none; }
+}
 /* Tablature: verbatim monospace, no reflow (columns must stay aligned), with
    horizontal scroll for long staves. Vertical auto-scroll still applies. */
 .sv-tab { margin: 0; font-family: var(--font-mono); font-size: max(14px, calc(var(--lyric) * 0.62)); line-height: 1.5; color: var(--ink); white-space: pre; overflow-x: auto; -webkit-overflow-scrolling: touch; tab-size: 4; scrollbar-width: thin; }
@@ -714,6 +723,7 @@ body {
 .sv-cd-row { display: flex; align-items: center; justify-content: center; gap: 10px; }
 .sv-cd-text { font-size: var(--text-md); color: var(--ink); text-align: center; max-width: 78vw; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sv-cd-text b { font-weight: 600; }
+.sv-cd-meta { font-size: var(--text-sm); font-weight: 600; color: var(--accent); font-variant-numeric: tabular-nums; }
 .sv-cd-num { font-family: var(--font-mono); font-weight: 700; font-size: 22px; color: var(--accent); font-variant-numeric: tabular-nums; flex: none; }
 .sv-cd-btn { border: none; background: var(--accent); color: var(--ink-on-accent); border-radius: 999px; padding: 8px 16px; font-family: var(--font-sans); font-weight: 600; font-size: var(--text-sm); cursor: pointer; flex: none; }
 .sv-cd-btn:hover { background: var(--accent-hover); }

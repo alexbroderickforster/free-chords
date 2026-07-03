@@ -470,6 +470,7 @@ export function App() {
     total: plList.length,
     nextTitle: plList[playSession.index + 1] ? plList[playSession.index + 1].title : null,
     nextKey: plList[playSession.index + 1] ? plList[playSession.index + 1].key : null,
+    nextCapo: plList[playSession.index + 1] ? (plList[playSession.index + 1].capo || 0) : 0,
     isLast: playSession.index + 1 >= plList.length,
   } : null;
 

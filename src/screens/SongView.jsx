@@ -36,7 +36,8 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
   const [tagDraft, setTagDraft] = useState('');
   const [tagEditing, setTagEditing] = useState(false);
   const [countdown, setCountdown] = useState(null); // null | seconds remaining | 'done'
-  const cdRef = useRef(null), endedRef = useRef(false); // endedRef: fire the end-of-song advance once
+  const [leaving, setLeaving] = useState(false); // fading the current song out before a playlist advance
+  const cdRef = useRef(null), endedRef = useRef(false), fadeRef = useRef(null); // endedRef: fire the end-of-song advance once
   // Metronome — Web Audio clicks scheduled at the song's BPM (accent every 4th).
   const [metronome, setMetronome] = useState(false);
   const actx = useRef(null), schedRef = useRef(null), nextNoteRef = useRef(0), beatRef = useRef(0), metroBpmRef = useRef(90);
@@ -132,6 +133,8 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
   useEffect(() => {
     clearCountdown();
     endedRef.current = false;
+    if (fadeRef.current) { clearTimeout(fadeRef.current); fadeRef.current = null; }
+    setLeaving(false); // the new song fades in fresh
     setTagEditing(false); setTagDraft('');
     setCapo(song.capo || 0);
     setTranspose(prefs.transpose ?? 0);
@@ -152,18 +155,25 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [song.id]);
 
-  // When the between-song countdown reaches zero, advance to the next song.
-  // Done here (not inside the setCountdown updater) so we never call App's
-  // setState while rendering SongView.
+  // When the between-song countdown reaches zero, fade the current song out and
+  // then advance. Done here (not inside the setCountdown updater) so we never
+  // call App's setState while rendering SongView. The fade timer lives in a ref,
+  // not this effect's cleanup, so the advance survives the re-render that
+  // hiding the countdown / starting the fade triggers.
   useEffect(() => {
     if (countdown !== 0) return;
     if (cdRef.current) { clearInterval(cdRef.current); cdRef.current = null; }
-    if (latest.current.onPlaylistNext) latest.current.onPlaylistNext();
+    setLeaving(true);
+    fadeRef.current = setTimeout(() => {
+      fadeRef.current = null;
+      if (latest.current.onPlaylistNext) latest.current.onPlaylistNext();
+    }, 240);
   }, [countdown]);
 
   // Cancel any running countdown / metronome when the view unmounts.
   useEffect(() => () => {
     if (cdRef.current) clearInterval(cdRef.current);
+    if (fadeRef.current) clearTimeout(fadeRef.current);
     if (schedRef.current) clearInterval(schedRef.current);
     if (actx.current) { try { actx.current.close(); } catch (e) { /* already closed */ } }
   }, []);
@@ -431,7 +441,8 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
       </div>
 
       <div className="sv-scroller" ref={scRef}>
-        <div className="sv-sheet" style={{ ['--lyric']: Math.round(fontSize * (focusMode ? 1.25 : 1)) + 'px' }}>
+        <div className={'sv-sheet' + (playlist ? ' sv-sheet--anim' : '') + (leaving ? ' sv-leaving' : '')}
+          key={song.id} style={{ ['--lyric']: Math.round(fontSize * (focusMode ? 1.25 : 1)) + 'px' }}>
           {isTab ? (
             <pre className="sv-tab">{song.source}</pre>
           ) : sections.map((sec, si) => (
@@ -456,7 +467,7 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
         </div>
       )}
 
-      {playlist && countdown != null && (
+      {playlist && countdown != null && !leaving && (
         <div className="sv-cd">
           {countdown === 'done' ? (
             <>
@@ -466,6 +477,13 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
           ) : (
             <>
               <span className="sv-cd-text">Up next: <b>{playlist.nextTitle}</b></span>
+              {(playlist.nextKey || playlist.nextCapo > 0) && (
+                <span className="sv-cd-meta">
+                  {playlist.nextKey ? `Key ${playlist.nextKey}` : ''}
+                  {playlist.nextKey && playlist.nextCapo > 0 ? ' · ' : ''}
+                  {playlist.nextCapo > 0 ? `Capo ${playlist.nextCapo}` : ''}
+                </span>
+              )}
               <div className="sv-cd-row">
                 <span className="sv-cd-num">{countdown}</span>
                 <button className="sv-cd-btn" onClick={() => { clearCountdown(); onPlaylistNext && onPlaylistNext(); }}>Skip</button>
