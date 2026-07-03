@@ -326,6 +326,7 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
     <div className={'sv' + (hideChords ? ' sv--no-chords' : '')} data-playing={playing ? 'true' : 'false'}>
       <div className="sv-progress"><div className="sv-progress-fill"></div></div>
 
+      <div className="sv-topwrap">
       <header className="sv-top">
         <button className="sv-ic" aria-label="Back to library" onClick={onBack}><Icon n="arrow-left" s={22} /></button>
         <div className="sv-title">
@@ -398,6 +399,7 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
           </div>
         )}
       </header>
+      </div>
 
       <div className="sv-scroller" ref={scRef}>
         <div className="sv-sheet" style={{ ['--lyric']: Math.round(fontSize * (focusMode ? 1.25 : 1)) + 'px' }}>
