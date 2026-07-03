@@ -1,24 +1,39 @@
 // GridEditor — Clinton's "grid" authoring style. Write lyrics on monospace lines;
 // above each line a clickable lane lets you drop a chord over any character via a
-// type-to-filter picker (chords already used in the song come first). It owns a
-// line model and emits ChordPro through onChange, so it's just another way to
-// edit the same song. See lib/gridedit.js for the model ⇄ ChordPro round-trip.
+// type-to-filter picker (chords already used in the song come first), and drag a
+// placed chord along the lane to nudge it. It owns a line model and emits ChordPro
+// through onChange, so it's just another way to edit the same song. See
+// lib/gridedit.js for the model ⇄ ChordPro round-trip.
 import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { Icon } from '../components/index.js';
 import { gridFromChordPro, gridToChordPro, shiftChords, usedChords, newId, DEFAULT_CHORDS } from '../lib/gridedit.js';
+
+const CHIP_PAD = 5; // .ge-chip left padding — subtract it so the label sits over the character
 
 export function GridEditor({ initialValue = '', onChange }) {
   const [lines, setLines] = useState(() => gridFromChordPro(initialValue));
   const [picker, setPicker] = useState(null); // { li, ci }
   const [pfilter, setPfilter] = useState('');
-  const rootRef = useRef(null), rulerRef = useRef(null), chW = useRef(10);
-  const inputs = useRef({});      // li -> input element
-  const pending = useRef(null);   // { li, caret } — focus to restore after a structural edit
+  const [chW, setChW] = useState(10);          // measured width of one lyric character, px
+  const [drag, setDrag] = useState(null);      // { li, fromCi, curCi } — live drag position
+  const rootRef = useRef(null), rulerRef = useRef(null);
+  const inputs = useRef({});                   // li -> input element
+  const pending = useRef(null);                // { li, caret } — focus to restore after a structural edit
+  const linesRef = useRef(lines); linesRef.current = lines;   // latest, for window drag listeners
+  const chwRef = useRef(chW); chwRef.current = chW;
+  const dragRef = useRef(null);
+  const suppressClick = useRef(false);         // eat the click that trails a drag
 
   const emit = (next) => { setLines(next); onChange && onChange(gridToChordPro(next)); };
   const used = usedChords(lines);
 
-  useLayoutEffect(() => { if (rulerRef.current) chW.current = rulerRef.current.getBoundingClientRect().width || 10; });
+  // Measure the real lyric character width (the ruler shares the lyric font). Both
+  // chip placement and click→index use this same number, so they always agree.
+  useLayoutEffect(() => {
+    const el = rulerRef.current; if (!el) return;
+    const w = el.getBoundingClientRect().width / 10;
+    if (w > 0 && Math.abs(w - chW) > 0.05) setChW(w);
+  });
   useLayoutEffect(() => {
     if (!pending.current) return;
     const { li, caret } = pending.current; pending.current = null;
@@ -76,9 +91,10 @@ export function GridEditor({ initialValue = '', onChange }) {
   // ---- chord edits ----
   const openPicker = (li, ci) => { setPfilter(''); setPicker({ li, ci }); };
   const laneClick = (li) => (e) => {
+    if (suppressClick.current) { suppressClick.current = false; return; } // a drag just ended
     if (e.target.closest('.ge-chip') || e.target.closest('.ge-pop')) return;
     const rect = e.currentTarget.getBoundingClientRect();
-    openPicker(li, Math.max(0, Math.round((e.clientX - rect.left) / chW.current)));
+    openPicker(li, Math.max(0, Math.round((e.clientX - rect.left) / chwRef.current)));
   };
   const setChord = (name) => {
     const n = (name || '').trim(); if (!picker || !n) return;
@@ -91,6 +107,41 @@ export function GridEditor({ initialValue = '', onChange }) {
     emit(lines.map((l, i) => { if (i !== li) return l; const c = { ...l.chords }; delete c[ci]; return { ...l, chords: c }; }));
     setPicker(null);
   };
+  const moveChord = (li, fromCi, toCi) => {
+    if (fromCi === toCi) return;
+    const cur = linesRef.current, ln = cur[li], name = ln.chords[fromCi];
+    if (name == null) return;
+    const chords = { ...ln.chords }; delete chords[fromCi]; chords[toCi] = name; // drop onto an occupied slot replaces it
+    emit(cur.map((l, i) => (i === li ? { ...l, chords } : l)));
+  };
+
+  // Grab a placed chord and slide it. A tap that doesn't move opens the picker.
+  const startChipDrag = (li, ci) => (e) => {
+    if (e.button != null && e.button !== 0) return;
+    e.preventDefault(); e.stopPropagation();
+    setPicker(null);
+    const laneRect = e.currentTarget.closest('.ge-lane').getBoundingClientRect();
+    const info = { li, ci, startX: e.clientX, laneRect, moved: false, curCi: ci };
+    dragRef.current = info;
+    const move = (ev) => {
+      if (!info.moved && Math.abs(ev.clientX - info.startX) < 4) return;
+      info.moved = true;
+      const len = linesRef.current[li].text.length;
+      const nc = Math.max(0, Math.min(len, Math.round((ev.clientX - laneRect.left) / chwRef.current)));
+      info.curCi = nc;
+      setDrag({ li, fromCi: ci, curCi: nc });
+    };
+    const up = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      dragRef.current = null;
+      if (info.moved) { moveChord(li, ci, info.curCi); suppressClick.current = true; setTimeout(() => { suppressClick.current = false; }, 80); }
+      else openPicker(li, ci);
+      setDrag(null);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  };
 
   const renderPicker = (li, ci) => {
     const existing = lines[li].chords[ci];
@@ -98,7 +149,7 @@ export function GridEditor({ initialValue = '', onChange }) {
     const rec = used.filter((c) => c.toLowerCase().startsWith(q));
     const pal = DEFAULT_CHORDS.filter((c) => c.toLowerCase().startsWith(q));
     const rw = rootRef.current ? rootRef.current.clientWidth : 320;
-    const left = Math.max(0, Math.min(ci * chW.current, rw - 244));
+    const left = Math.max(0, Math.min(ci * chW, rw - 244));
     return (
       <div className="ge-pop" style={{ left: left + 'px' }} onMouseDown={(e) => e.stopPropagation()}>
         <input autoFocus className="ge-pop-filter ge-mono" placeholder="Type a chord" value={pfilter} spellCheck={false}
@@ -117,18 +168,25 @@ export function GridEditor({ initialValue = '', onChange }) {
     );
   };
 
+  const chipLeft = (ci) => Math.round(ci * chW - CHIP_PAD) + 'px';
+
   return (
     <div className="ge" ref={rootRef}>
-      <span ref={rulerRef} className="ge-mono ge-ruler" aria-hidden="true">0</span>
+      <span ref={rulerRef} className="ge-mono ge-ruler" aria-hidden="true">0000000000</span>
       {lines.map((ln, li) => (
         <div className={'ge-line ge-line--' + ln.type} key={ln.id}>
           {ln.type === 'lyric' ? (
             <div className="ge-body">
               <div className="ge-lane" onClick={laneClick(li)} title="Click to place a chord">
-                {Object.keys(ln.chords).map((k) => (
-                  <button key={k} type="button" className="ge-chip" style={{ left: (+k) + 'ch' }}
-                    onClick={(e) => { e.stopPropagation(); openPicker(li, +k); }}>{ln.chords[k]}</button>
-                ))}
+                {Object.keys(ln.chords).map((k) => {
+                  const dragging = drag && drag.li === li && drag.fromCi === +k;
+                  return (
+                    <button key={k} type="button" className={'ge-chip' + (dragging ? ' ge-chip--drag' : '')} style={{ left: chipLeft(dragging ? drag.curCi : +k) }}
+                      title="Drag to move · click to change" aria-label={'Chord ' + ln.chords[k] + ', drag to move or click to edit'}
+                      onPointerDown={startChipDrag(li, +k)}
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openPicker(li, +k); } }}>{ln.chords[k]}</button>
+                  );
+                })}
                 {picker && picker.li === li && renderPicker(li, picker.ci)}
               </div>
               <input ref={(el) => { inputs.current[li] = el; }} className="ge-mono ge-lyric" value={ln.text} spellCheck={false}
