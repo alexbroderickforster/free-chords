@@ -27,7 +27,10 @@ export function parseChordProLine(s) {
     }
     text += s[i]; i++;
   }
-  return { text, chords };
+  // Drop trailing space padding (see lineToChordPro) so a chord placed past the
+  // last character stays chord-anchored rather than baking phantom spaces into the
+  // lyric — its index already exceeds text.length and lineToChordPro re-pads on save.
+  return { text: text.replace(/ +$/, ''), chords };
 }
 
 // One raw ChordPro row → a grid line object (section header, unknown directive, or

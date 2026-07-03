@@ -6,7 +6,7 @@
 // lib/gridedit.js for the model ⇄ ChordPro round-trip.
 import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { Icon } from '../components/index.js';
-import { gridFromChordPro, gridToChordPro, shiftChords, usedChords, newId, rowToLine, parseChordProLine, DEFAULT_CHORDS } from '../lib/gridedit.js';
+import { gridFromChordPro, gridToChordPro, shiftChords, usedChords, newId, rowToLine, DEFAULT_CHORDS } from '../lib/gridedit.js';
 
 const CHIP_PAD = 5;  // .ge-chip left padding — subtract it so the label sits over the character
 const MAX_COL = 120; // furthest column a chord can be placed at (chords past the text pad with spaces)
@@ -121,17 +121,33 @@ export function GridEditor({ initialValue = '', onChange }) {
     Object.keys(ln.chords).forEach((k) => { const n = +k; if (n < pos) beforeChords[n] = ln.chords[k]; else afterChords[n - pos] = ln.chords[k]; });
     const rows = text.replace(/\r\n?/g, '\n').split('\n');
     const out = [];
-    const f = parseChordProLine(rows[0]);      // first row joins onto `before`
-    const fc = { ...beforeChords };
-    Object.keys(f.chords).forEach((k) => { fc[+k + before.length] = f.chords[k]; });
-    out.push({ id: newId(), type: 'lyric', text: before + f.text, chords: fc });
-    for (let i = 1; i < rows.length - 1; i++) out.push(rowToLine(rows[i])); // middle rows classified (lyrics/sections)
-    const l = parseChordProLine(rows[rows.length - 1]); // last row joins onto `after`
-    const lc = { ...l.chords };
-    Object.keys(afterChords).forEach((k) => { lc[+k + l.text.length] = afterChords[k]; });
-    out.push({ id: newId(), type: 'lyric', text: l.text + after, chords: lc });
+    let caret = 0;
+    // First row: merge onto `before` when it's a plain lyric; a section/directive
+    // row is classified instead (flushing any leftover `before` as its own line).
+    const first = rowToLine(rows[0]);
+    if (first.type === 'lyric') {
+      const fc = { ...beforeChords };
+      Object.keys(first.chords).forEach((k) => { fc[+k + before.length] = first.chords[k]; });
+      out.push({ id: newId(), type: 'lyric', text: before + first.text, chords: fc });
+    } else {
+      if (before || Object.keys(beforeChords).length) out.push({ id: newId(), type: 'lyric', text: before, chords: beforeChords });
+      out.push(first);
+    }
+    for (let i = 1; i < rows.length - 1; i++) out.push(rowToLine(rows[i])); // middle rows classified
+    if (rows.length > 1) {
+      const last = rowToLine(rows[rows.length - 1]);
+      if (last.type === 'lyric') {
+        const lc = { ...last.chords };
+        Object.keys(afterChords).forEach((k) => { lc[+k + last.text.length] = afterChords[k]; });
+        out.push({ id: newId(), type: 'lyric', text: last.text + after, chords: lc });
+        caret = last.text.length;
+      } else {
+        out.push(last);
+        if (after || Object.keys(afterChords).length) out.push({ id: newId(), type: 'lyric', text: after, chords: afterChords });
+      }
+    }
     emit([...lines.slice(0, li), ...out, ...lines.slice(li + 1)]);
-    pending.current = { li: li + out.length - 1, caret: l.text.length };
+    pending.current = { li: li + out.length - 1, caret };
   };
 
   // ---- chord edits ----
