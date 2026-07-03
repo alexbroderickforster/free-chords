@@ -56,6 +56,12 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
   const [micDenied, setMicDenied] = useState(false);
   const micStream = useRef(null), micAn = useRef(null), micDb = useRef(null), micMag = useRef(null), micTimer = useRef(null), micGen = useRef(0);
   const spreads = useRef([]); // per-frame cents-spread readings while playing
+  // Scratch-track recorder: capture the mic while the sheet scrolls, then save/share it.
+  const [recording, setRecording] = useState(false);
+  const [recTime, setRecTime] = useState(0);          // elapsed seconds while recording
+  const [recTake, setRecTake] = useState(null);       // { url, blob, ext, seconds } finished take
+  const [recError, setRecError] = useState('');
+  const recRef = useRef(null), recStream = useRef(null), recChunks = useRef([]), recTimer = useRef(null), recStart = useRef(0);
   // The scroll RAF loop must call the CURRENT playlist callbacks without being
   // in its deps (that would restart the loop and stutter). Read them via a ref.
   const latest = useRef({});
@@ -138,6 +144,82 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
     micAn.current = null;
   };
 
+  // ---- Scratch-track recorder (mic → downloadable audio file) ----
+  const fmtSec = (s) => { s = Math.max(0, Math.floor(s || 0)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
+  const recMime = () => {
+    if (typeof MediaRecorder === 'undefined') return null;
+    for (const t of ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg;codecs=opus', 'audio/ogg']) {
+      if (MediaRecorder.isTypeSupported(t)) return t;
+    }
+    return '';
+  };
+  const startRecording = async () => {
+    if (recording) return;
+    setRecError('');
+    if (recTake) { URL.revokeObjectURL(recTake.url); setRecTake(null); } // drop a prior take
+    const mime = recMime();
+    if (mime == null) { setRecError('Recording isn’t supported in this browser.'); return; }
+    try {
+      const ms = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
+      recStream.current = ms;
+      const ext = mime.includes('webm') ? 'webm' : mime.includes('mp4') ? 'm4a' : mime.includes('ogg') ? 'ogg' : 'webm';
+      const rec = new MediaRecorder(ms, mime ? { mimeType: mime } : undefined);
+      recChunks.current = [];
+      rec.ondataavailable = (e) => { if (e.data && e.data.size) recChunks.current.push(e.data); };
+      rec.onstop = () => {
+        const blob = new Blob(recChunks.current, { type: mime || 'audio/webm' });
+        const seconds = Math.round((performance.now() - recStart.current) / 1000);
+        setRecTake({ url: URL.createObjectURL(blob), blob, ext, seconds });
+        if (recStream.current) { recStream.current.getTracks().forEach((t) => t.stop()); recStream.current = null; }
+      };
+      recRef.current = rec;
+      rec.start();
+      recStart.current = performance.now();
+      setRecTime(0); setRecording(true);
+      recTimer.current = setInterval(() => setRecTime(Math.floor((performance.now() - recStart.current) / 1000)), 250);
+      // Play-along: scroll from the top while recording.
+      const sc = scRef.current; if (sc) { sc.scrollTop = 0; endedRef.current = false; }
+      setPlaying(true);
+    } catch {
+      setRecError('Mic access is blocked — allow it to record a scratch take.');
+      if (recStream.current) { recStream.current.getTracks().forEach((t) => t.stop()); recStream.current = null; }
+    }
+  };
+  const stopRecording = () => {
+    if (recTimer.current) { clearInterval(recTimer.current); recTimer.current = null; }
+    setRecording(false); setPlaying(false);
+    try { if (recRef.current && recRef.current.state !== 'inactive') recRef.current.stop(); } catch { /* ignore */ }
+    recRef.current = null;
+  };
+  const recFileName = () => {
+    const k = transposeChordName(song.key, transpose);
+    const key = k ? ` ${k}` : '';
+    const capoTxt = capo > 0 ? ` capo ${capo}` : '';
+    return `${(song.title || 'song').replace(/[\\/:*?"<>|]+/g, '').trim()}${key}${capoTxt} — scratch.${recTake ? recTake.ext : 'webm'}`;
+  };
+  const downloadTake = () => {
+    if (!recTake) return;
+    const a = document.createElement('a');
+    a.href = recTake.url; a.download = recFileName();
+    document.body.appendChild(a); a.click(); a.remove();
+  };
+  const shareTake = async () => {
+    if (!recTake) return;
+    try {
+      const file = new File([recTake.blob], recFileName(), { type: recTake.blob.type });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: song.title }); return; }
+    } catch { /* fall through to download */ }
+    downloadTake();
+  };
+  const discardTake = () => { if (recTake) URL.revokeObjectURL(recTake.url); setRecTake(null); setRecError(''); };
+  const canShareTake = typeof navigator !== 'undefined' && !!navigator.canShare;
+  // Tear down an in-progress recording WITHOUT producing a take (song change / unmount).
+  const abortRecording = () => {
+    if (recTimer.current) { clearInterval(recTimer.current); recTimer.current = null; }
+    if (recRef.current) { recRef.current.onstop = null; try { if (recRef.current.state !== 'inactive') recRef.current.stop(); } catch { /* ignore */ } recRef.current = null; }
+    if (recStream.current) { recStream.current.getTracks().forEach((t) => t.stop()); recStream.current = null; }
+  };
+
   // Ear-training ping: a soft tonic triad so the player can pitch themselves.
   const pingChord = (freqs) => {
     const ctx = ensureAudio();
@@ -202,6 +284,8 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
     if (fadeRef.current) { clearTimeout(fadeRef.current); fadeRef.current = null; }
     setLeaving(false); // the new song fades in fresh
     spreads.current = []; setTuningNudge(false); // fresh tuning read per song
+    abortRecording(); setRecording(false); setRecError(''); setRecTime(0);
+    setRecTake((prev) => { if (prev) URL.revokeObjectURL(prev.url); return null; }); // fresh recorder per song
     setTagEditing(false); setTagDraft('');
     setCapo(song.capo || 0);
     setTranspose(prefs.transpose ?? 0);
@@ -252,8 +336,11 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
     if (fadeRef.current) clearTimeout(fadeRef.current);
     if (schedRef.current) clearInterval(schedRef.current);
     stopTuningMic();
+    abortRecording();
     if (actx.current) { try { actx.current.close(); } catch (e) { /* already closed */ } }
   }, []);
+  // Free a finished take's object URL when it's replaced or on unmount.
+  useEffect(() => () => { if (recTake) URL.revokeObjectURL(recTake.url); }, [recTake]);
 
   // Persisting setters: update local state and save the per-song pref.
   const persist = (patch) => onSavePref && onSavePref(patch);
@@ -591,6 +678,29 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
           <button className="sv-tunebar-x" aria-label="Dismiss" onClick={() => setMicDenied(false)}><Icon n="x" s={14} /></button>
         </div>
       )}
+      {recording && (
+        <div className="sv-recbar sv-recbar--live">
+          <span className="sv-rec-dot" aria-hidden="true"></span>
+          <span className="sv-recbar-txt">Recording · {fmtSec(recTime)}</span>
+          <button className="sv-recbar-stop" onClick={stopRecording}><Icon n="square" s={13} />Stop</button>
+        </div>
+      )}
+      {recError && !recording && (
+        <div className="sv-tunebar sv-tunebar--muted">
+          <Icon n="circle-alert" s={16} />
+          <span className="sv-tunebar-txt">{recError}</span>
+          <button className="sv-tunebar-x" aria-label="Dismiss" onClick={() => setRecError('')}><Icon n="x" s={14} /></button>
+        </div>
+      )}
+      {recTake && !recording && (
+        <div className="sv-recbar">
+          <span className="sv-recbar-txt"><Icon n="mic" s={15} />Scratch take · {fmtSec(recTake.seconds)}</span>
+          <audio className="sv-rec-audio" src={recTake.url} controls preload="metadata" />
+          {canShareTake && <button className="sv-recbar-go" onClick={shareTake}><Icon n="share-2" s={14} />Share</button>}
+          <button className="sv-recbar-go" onClick={downloadTake}><Icon n="download" s={14} />Save</button>
+          <button className="sv-tunebar-x" aria-label="Discard take" onClick={discardTake}><Icon n="x" s={14} /></button>
+        </div>
+      )}
 
       <div className="sv-dock">
         <button className="sv-ghost" aria-label="Back to start" onClick={() => scRef.current && scRef.current.scrollTo({ top: 0, behavior: 'smooth' })}><Icon n="rotate-ccw" s={20} /></button>
@@ -625,6 +735,9 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
             title="Tuning check — listens while you play and flags if the guitar drifts out of tune"
             onClick={() => onSetTuningMonitor(!tuningMonitor)}><Icon n="mic" s={20} /></button>
         )}
+        <button className={'sv-metro sv-rec' + (recording ? ' is-rec' : '')} aria-label={recording ? 'Stop recording' : 'Record a scratch take'} aria-pressed={recording}
+          title={recording ? 'Stop recording' : 'Record yourself playing along — saves an audio file'}
+          onClick={() => (recording ? stopRecording() : startRecording())}><Icon n={recording ? 'square' : 'circle'} s={recording ? 15 : 18} /></button>
       </div>
 
       <div className="sv-chordpop" ref={popRef}></div>

@@ -871,6 +871,19 @@ body {
 .sv-mic.is-on { animation: none; }
 .sv-mic--live { position: relative; animation: sv-metro-pulse 1s ease-in-out infinite; }
 .sv-mic--live::after { content: ''; position: absolute; top: 7px; right: 7px; width: 7px; height: 7px; border-radius: 50%; background: var(--danger); box-shadow: 0 0 0 2px var(--surface); }
+/* Scratch-track recorder: dock button + bar */
+.sv-rec svg { color: var(--danger); }
+.sv-rec.is-rec { background: color-mix(in oklab, var(--danger) 16%, transparent); animation: sv-metro-pulse 1.1s ease-in-out infinite; }
+.sv-recbar { position: absolute; left: 50%; bottom: 150px; transform: translateX(-50%); z-index: 7; display: flex; align-items: center; gap: 10px; max-width: 94%; flex-wrap: wrap; justify-content: center; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); padding: 8px 10px 8px 16px; font-size: var(--text-sm); color: var(--ink); }
+.sv-recbar--live { border-color: color-mix(in oklab, var(--danger) 34%, transparent); }
+.sv-recbar-txt { display: inline-flex; align-items: center; gap: 7px; font-weight: 600; white-space: nowrap; }
+.sv-recbar-txt svg { color: var(--ink-soft); flex: none; }
+.sv-rec-dot { width: 11px; height: 11px; border-radius: 50%; background: var(--danger); flex: none; animation: sv-metro-pulse 1.1s ease-in-out infinite; }
+.sv-rec-audio { height: 34px; max-width: 220px; }
+.sv-recbar-stop, .sv-recbar-go { display: inline-flex; align-items: center; gap: 6px; border: none; border-radius: 999px; padding: 7px 15px; font-family: var(--font-sans); font-weight: 600; font-size: var(--text-sm); cursor: pointer; flex: none; }
+.sv-recbar-stop { background: var(--danger); color: #fff; }
+.sv-recbar-go { background: var(--accent); color: var(--ink-on-accent); }
+.sv-recbar-go:hover { background: var(--accent-hover); }
 
 /* ---- Toast ---- */
 .app-toast {
