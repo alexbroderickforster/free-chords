@@ -638,6 +638,33 @@ body {
 .tn-listen svg { width: 19px; height: 19px; }
 .tn-hint { font-size: var(--text-sm); color: var(--ink-faint); text-align: center; max-width: 34ch; }
 
+/* ---- Tuning detector lab (experimental) ---- */
+.screen.tl { max-width: 640px; }
+.tl-verdict { text-align: center; border-radius: var(--radius-lg); padding: 24px 18px; border: 1px solid var(--line); background: var(--surface); }
+.tl-verdict--good { background: var(--good-soft); border-color: color-mix(in oklab, var(--good) 26%, transparent); }
+.tl-verdict--borderline { background: var(--accent-soft); border-color: color-mix(in oklab, var(--accent) 26%, transparent); }
+.tl-verdict--bad { background: color-mix(in oklab, var(--danger) 12%, var(--surface)); border-color: color-mix(in oklab, var(--danger) 34%, transparent); }
+.tl-spread { font-family: var(--font-mono); font-weight: 700; font-size: 46px; line-height: 1; color: var(--ink); font-variant-numeric: tabular-nums; display: flex; align-items: baseline; justify-content: center; gap: 8px; }
+.tl-unit { font-family: var(--font-sans); font-size: var(--text-sm); font-weight: 600; color: var(--ink-soft); }
+.tl-vlabel { margin-top: 8px; font-weight: 600; font-size: var(--text-md); }
+.tl-verdict--good .tl-vlabel { color: var(--good); }
+.tl-verdict--borderline .tl-vlabel { color: var(--accent); }
+.tl-verdict--bad .tl-vlabel { color: var(--danger); }
+.tl-verdict--idle .tl-vlabel { color: var(--ink-soft); }
+.tl-hist { display: flex; align-items: flex-end; gap: 2px; height: 92px; margin: 22px 0 6px; padding: 0 2px; }
+.tl-bar { flex: 1; background: color-mix(in oklab, var(--accent) 45%, transparent); border-radius: 2px 2px 0 0; min-height: 2px; transition: height .09s linear; }
+.tl-bar--center { background: var(--good); }
+.tl-hist-axis { display: flex; justify-content: space-between; font-size: var(--text-xs); color: var(--ink-faint); font-variant-numeric: tabular-nums; }
+.tl-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px 14px; margin: 22px 0; }
+.tl-stat { display: flex; justify-content: space-between; gap: 10px; font-size: var(--text-sm); padding: 9px 12px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-md); }
+.tl-stat-k { color: var(--ink-soft); }
+.tl-stat-v { font-family: var(--font-mono); font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
+.tl-listen { display: flex; align-items: center; justify-content: center; gap: 9px; width: 100%; border: none; cursor: pointer; font-family: var(--font-sans); font-weight: 600; font-size: var(--text-base); padding: 14px 22px; border-radius: 999px; background: var(--accent); color: var(--ink-on-accent); transition: background .12s, transform .12s; margin-top: 6px; }
+.tl-listen:hover { background: var(--accent-hover); }
+.tl-listen:active { transform: scale(.99); }
+.tl-listen.live { background: var(--good); }
+.tl-hint { font-size: var(--text-sm); color: var(--ink-soft); line-height: 1.5; text-align: center; max-width: none; margin-top: 12px; }
+
 /* ---- Playlists ---- */
 .pl-list { display: flex; flex-direction: column; gap: 10px; }
 .pl-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 14px 16px; }

@@ -9,6 +9,7 @@ import { Playlists } from './screens/Playlists.jsx';
 import { AddImport } from './screens/AddImport.jsx';
 import { Practice } from './screens/Practice.jsx';
 import { TunerView } from './screens/TunerView.jsx';
+import { TuningLab } from './screens/TuningLab.jsx';
 import { SONGS, ALL_TAGS } from './data/songs.js';
 import { nextStatus } from './lib/music.js';
 import { Settings, SyncBadge } from './screens/Settings.jsx';
@@ -485,7 +486,8 @@ export function App() {
         {tab === 'add' && <AddImport onBack={() => setTab('songs')} knownTags={knownTags} artistOptions={artistOptions} albumOptions={albumOptions} apiKey={apiKey} onSaveApiKey={setApiKey} onSave={addSong} />}
         {tab === 'practice' && <Practice loops={loops} onSaveLoop={saveLoop} onDeleteLoop={deleteLoop} initialLoop={initialLoop} />}
         {tab === 'tuner' && <TunerView />}
-        {tab === 'settings' && <Settings {...backupProps} dark={dark} onToggleTheme={toggleTheme} />}
+        {tab === 'tuninglab' && <TuningLab onBack={() => setTab('settings')} />}
+        {tab === 'settings' && <Settings {...backupProps} dark={dark} onToggleTheme={toggleTheme} onOpenLab={() => setTab('tuninglab')} />}
       </main>
     );
 

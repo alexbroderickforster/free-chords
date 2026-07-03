@@ -79,7 +79,7 @@ export function Settings({
   onConnectSync, onSyncNow, onDisconnectSync,
   apiKey, onSaveApiKey,
   songCount, standalone, ios, canInstall, onInstall,
-  dark, onToggleTheme,
+  dark, onToggleTheme, onOpenLab,
 }) {
   const fileRef = useRef(null);
   const pick = (e) => {
@@ -163,6 +163,17 @@ export function Settings({
         <h2 className="set-h">Appearance</h2>
         <Switch checked={!!dark} onChange={onToggleTheme} label="Dark mode" />
       </section>
+
+      {/* Experimental */}
+      {onOpenLab && (
+        <section className="set-section">
+          <h2 className="set-h">Experimental</h2>
+          <p className="set-note">Rough ideas we’re trying out. A tuning detector that listens while you play and tells you if the guitar sounds out of tune with itself — a proof of concept for now.</p>
+          <div className="set-buttons">
+            <Button variant="ghost" size="sm" iconLeft={<Icon n="mic" s={16} />} onClick={onOpenLab}>Tuning detector</Button>
+          </div>
+        </section>
+      )}
     </div>
   );
 }
