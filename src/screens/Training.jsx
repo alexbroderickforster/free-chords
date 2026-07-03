@@ -43,6 +43,8 @@ export function Training() {
 
   const ac = useRef(null);
   const advanceTimer = useRef(null);
+  const voices = useRef([]);   // live oscillators, so a new question can cut off the previous one
+  const lastS = useRef(null);  // last interval, to avoid immediate repeats
   const latest = useRef({});
 
   useEffect(() => { saveTraining({ enabled, direction, speed, fixedRoot, autoAdvance }); }, [enabled, direction, speed, fixedRoot, autoAdvance]);
@@ -59,10 +61,24 @@ export function Training() {
     g.gain.setValueAtTime(0.2, start + Math.max(0.05, dur - 0.09));
     g.gain.exponentialRampToValueAtTime(0.0001, start + dur);
     osc.connect(g).connect(ctx.destination);
+    const voice = { osc, g };
+    voices.current.push(voice);
+    osc.onended = () => { voices.current = voices.current.filter((v) => v !== voice); };
     osc.start(start); osc.stop(start + dur + 0.03);
   };
+  // Cut any still-sounding tones (with a quick fade to avoid a click) so rapid
+  // Play / Hear-again taps don't stack into a clipping chord.
+  const stopVoices = () => {
+    const ctx = ac.current; if (!ctx) return;
+    const now = ctx.currentTime;
+    for (const { osc, g } of voices.current) {
+      try { g.gain.cancelScheduledValues(now); g.gain.setValueAtTime(Math.max(g.gain.value, 0.0001), now); g.gain.exponentialRampToValueAtTime(0.0001, now + 0.02); } catch { /* ignore */ }
+      try { osc.stop(now + 0.03); } catch { /* already stopped */ }
+    }
+    voices.current = [];
+  };
   const playInterval = (q) => {
-    const ctx = audio(); const t0 = ctx.currentTime + 0.06; const sp = SPEED[speed];
+    const ctx = audio(); stopVoices(); const t0 = ctx.currentTime + 0.06; const sp = SPEED[speed];
     if (q.dir === 'harmonic') {
       const dur = sp.dur * 1.7;
       tone(midiToFreq(q.root), t0, dur);
@@ -75,10 +91,15 @@ export function Training() {
   };
   const genQuestion = () => {
     const pool = enabled;
-    const s = pool[Math.floor(Math.random() * pool.length)];
+    let s;
+    do { s = pool[Math.floor(Math.random() * pool.length)]; } while (pool.length > 1 && s === lastS.current);
+    lastS.current = s;
     const dir = direction === 'both' ? (Math.random() < 0.5 ? 'asc' : 'desc') : direction;
     const root = fixedRoot ? 60 : 57 + Math.floor(Math.random() * 8); // C4 fixed, else A3–E4
-    return { s, root, dir };
+    // Freeze the answer options with the question so changing the pool mid-question
+    // can't hide the correct answer.
+    const opts = INTERVALS.filter((i) => pool.includes(i.s));
+    return { s, root, dir, opts };
   };
 
   const play = () => {
@@ -113,7 +134,7 @@ export function Training() {
       }
       const n = parseInt(e.key, 10);
       if (!isNaN(n) && n >= 1 && L.current && !L.answered) {
-        const choices = INTERVALS.filter((i) => L.enabled.includes(i.s));
+        const choices = L.current.opts || INTERVALS.filter((i) => L.enabled.includes(i.s));
         if (choices[n - 1]) L.choose(choices[n - 1].s);
       }
     };
@@ -121,7 +142,7 @@ export function Training() {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  const choices = INTERVALS.filter((i) => enabled.includes(i.s));
+  const choices = current ? current.opts : INTERVALS.filter((i) => enabled.includes(i.s));
   const toggleInterval = (s) => setEnabled((prev) => (prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]).sort((a, b) => a - b));
   const pct = score.total ? Math.round((score.correct / score.total) * 100) : 0;
 
@@ -152,7 +173,7 @@ export function Training() {
                 const state = answered ? (iv.s === current.s ? ' is-correct' : (iv.s === answered.chosen ? ' is-wrong' : ' is-dim')) : '';
                 return (
                   <button key={iv.s} className={'tr-choice' + state} disabled={!!answered} onClick={() => choose(iv.s)}>
-                    <span className="tr-choice-key" aria-hidden="true">{i + 1}</span>{iv.name}
+                    {i < 9 && <span className="tr-choice-key" aria-hidden="true">{i + 1}</span>}{iv.name}
                   </button>
                 );
               })}
