@@ -91,6 +91,9 @@ export function Practice({ loops = [], onSaveLoop, onDeleteLoop, initialLoop }) 
     if (s.kind === 'youtube') { try { ytPlayer.current && ytPlayer.current.setPlaybackRate(snapRate(r, latest.current.ytRates)); } catch { /* ignore */ } }
     else if (audioRef.current) audioRef.current.playbackRate = r;
   };
+  // Where the loop (re)starts: A, minus any pre-roll lead-in. Play, the rAF
+  // wrap, and manual restart all begin here so the A–B pins define where playback runs.
+  const loopStart = () => { const { a: la, preRoll: pr } = latest.current; return Math.max(0, (la || 0) - (pr || 0)); };
 
   // ---- load a source ----
   const loadSource = (src, preset) => {
@@ -220,8 +223,8 @@ export function Practice({ loops = [], onSaveLoop, onDeleteLoop, initialLoop }) 
     const tick = () => {
       const t = getTime();
       if (!dragging.current) setCur(t);
-      const { a: la, b: lb, preRoll: pr } = latest.current;
-      if (la != null && lb != null && lb > la && t >= lb - 0.04) seek(Math.max(0, la - (pr || 0)));
+      const { a: la, b: lb } = latest.current;
+      if (la != null && lb != null && lb > la && t >= lb - 0.04) seek(loopStart());
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
@@ -244,7 +247,7 @@ export function Practice({ loops = [], onSaveLoop, onDeleteLoop, initialLoop }) 
       if (k === 's' || k === 'S') return hit(() => setA(round1(getTime())));
       if (k === 'e' || k === 'E') return hit(() => setB(round1(getTime())));
       if (k === 'c' || k === 'C') return hit(clearLoop);
-      if (k === 'r' || k === 'R') return hit(() => { if (s.a != null) seek(s.a); });
+      if (k === 'r' || k === 'R') return hit(() => { if (s.a != null) seek(loopStart()); });
       if (k === 'ArrowLeft') return hit(() => seek(getTime() - 5));
       if (k === 'ArrowRight') return hit(() => seek(getTime() + 5));
       if (k === 'o' || k === 'O') return hit(() => doShift(-1));
@@ -260,7 +263,16 @@ export function Practice({ loops = [], onSaveLoop, onDeleteLoop, initialLoop }) 
   }, []);
 
   // ---- actions ----
-  const togglePlay = () => { if (!source) return; if (latest.current.playing) pause(); else play(); };
+  const togglePlay = () => {
+    if (!source) return;
+    const s = latest.current;
+    if (s.playing) { pause(); return; }
+    // Start the loop at A (honoring pre-roll) when the head sits outside [A, B),
+    // so the pins define where play begins; continue in place if already inside.
+    const { a: la, b: lb } = s;
+    if (la != null && lb != null && lb > la) { const t = getTime(); if (t < la || t >= lb) seek(loopStart()); }
+    play();
+  };
   const clearLoop = () => { setA(null); setB(null); };
   const setStart = () => setA(round1(getTime()));
   const setEnd = () => setB(round1(getTime()));
@@ -420,7 +432,7 @@ export function Practice({ loops = [], onSaveLoop, onDeleteLoop, initialLoop }) 
               <button className="pr-ic" aria-label="Back 5 seconds" onClick={() => seek(getTime() - 5)}><Icon n="skip-back" s={18} /></button>
               <button className="pr-play" aria-label={playing ? 'Pause' : 'Play'} onClick={togglePlay}><Icon n={playing ? 'pause' : 'play'} s={26} /></button>
               <button className="pr-ic" aria-label="Forward 5 seconds" onClick={() => seek(getTime() + 5)}><Icon n="skip-forward" s={18} /></button>
-              <button className="pr-ic" aria-label="Restart loop" onClick={() => a != null && seek(a)}><Icon n="rotate-ccw" s={18} /></button>
+              <button className="pr-ic" aria-label="Restart loop" onClick={() => a != null && seek(loopStart())}><Icon n="rotate-ccw" s={18} /></button>
               <span className="pr-time">{fmtTime(cur)}<span className="pr-time-sep">/</span>{fmtTime(duration)}</span>
             </div>
             <div className="pr-speed">
