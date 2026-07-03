@@ -13,7 +13,7 @@ import { cleanToChordPro } from './chordpro.js';
 import { isMostlyTab } from './tab.js';
 
 const API_URL = 'https://api.anthropic.com/v1/messages';
-const MODEL = 'claude-opus-4-8';
+const MODEL = 'claude-haiku-4-5';
 
 const PROMPT = `You are given an image of a song's chord sheet (chords positioned above the lyrics), or possibly guitar tablature. Transcribe it faithfully.
 
@@ -25,7 +25,12 @@ Return ONLY a JSON object — no markdown fences, no commentary — with these f
 - "capo": the capo fret as a number if shown, else 0.
 - "content": the transcription (see below).
 
-For "chordpro", write "content" as ChordPro: put each chord inline in square brackets immediately before the syllable it sits above, e.g. "[C]When the [G]night has come". Put section headers on their own line as {c: Verse 1}, {c: Chorus}, etc. Preserve line and verse breaks with \\n. Do not invent chords or lyrics the image doesn't show.
+For "chordpro", write "content" as ChordPro, following these rules exactly:
+- Read EVERY chord label in the image, top to bottom and left to right — do not skip or drop any. If a line has two or more chords above it, include all of them.
+- Place each chord inline in square brackets IMMEDIATELY BEFORE the exact syllable it sits above, e.g. "When the [C]night has [G]come" — NOT bunched at the start like "[C] [G]When the night has come". A chord's horizontal position matters: a chord drawn toward the right of the line belongs over a later word, not an early one.
+- For a chords-only line with no lyrics beneath it (like an intro or a turnaround), bracket each chord: "[G] [Dm] [C] [G]".
+- Put section headers on their own line as {c: Verse 1}, {c: Chorus}, etc.
+- Preserve line and verse breaks with \\n. Do not invent chords or lyrics the image doesn't show.
 
 For "tab", put the tablature in "content" verbatim as plain text — keep the string letters and dashes exactly — with \\n between lines.
 
