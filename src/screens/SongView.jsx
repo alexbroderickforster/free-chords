@@ -239,7 +239,6 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
       const hs = segs.map((s) => s.getBoundingClientRect().height).filter((h) => h > 0).sort((a, b) => a - b);
       if (hs.length) rowPx = hs[Math.floor(hs.length / 2)];
     }
-    const endEl = sc0 ? sc0.querySelector('.sv-end') : null;
     const tick = (now) => {
       if (!lastRef.current) lastRef.current = now;
       const dt = now - lastRef.current; lastRef.current = now;
@@ -253,13 +252,12 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
         if (accRef.current >= 1) {
           const whole = Math.floor(accRef.current); accRef.current -= whole;
           sc.scrollTop += whole;
-          // End when the "— end —" marker scrolls up into the lower-middle of the
-          // view (the song is done) — not the scroller's absolute max, which is
-          // ~20dvh of blank tail padding beyond the last line.
-          const atEnd = endEl
-            ? (endEl.getBoundingClientRect().top - sc.getBoundingClientRect().top) <= sc.clientHeight * 0.66
-            : sc.scrollTop + sc.clientHeight >= sc.scrollHeight - 1;
-          if (atEnd) reachedBottom();
+          // The song is done once it can't scroll any further. The tail padding
+          // leaves the last line comfortably in view at that point. (The earlier
+          // "end marker past 66% of the view" test never fired — that same tail
+          // padding stops the marker at ~72-80% of the view, so the playlist
+          // never rolled into the next song on its own.)
+          if (sc.scrollTop + sc.clientHeight >= sc.scrollHeight - 2) reachedBottom();
         }
       }
       updateFocus();
