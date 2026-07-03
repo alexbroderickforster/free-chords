@@ -22,9 +22,11 @@ export function GridEditor({ initialValue = '', onChange }) {
   const linesRef = useRef(lines); linesRef.current = lines;   // latest, for window drag listeners
   const chwRef = useRef(chW); chwRef.current = chW;
   const dragRef = useRef(null);
+  const dragCleanup = useRef(null);            // teardown for the in-flight drag's window listeners
   const suppressClick = useRef(false);         // eat the click that trails a drag
+  const lastEmitted = useRef(initialValue);    // exact ChordPro we last emitted — skip re-seeding on our own echo
 
-  const emit = (next) => { setLines(next); onChange && onChange(gridToChordPro(next)); };
+  const emit = (next) => { const cp = gridToChordPro(next); lastEmitted.current = cp; setLines(next); onChange && onChange(cp); };
   const used = usedChords(lines);
 
   // Measure the real lyric character width (the ruler shares the lyric font). Both
@@ -46,6 +48,24 @@ export function GridEditor({ initialValue = '', onChange }) {
     document.addEventListener('mousedown', onDown);
     return () => document.removeEventListener('mousedown', onDown);
   }, [picker]);
+  // Re-measure once the monospace web font swaps in — the first paint can use the
+  // fallback font, which would place every chip against the wrong character width.
+  useEffect(() => {
+    if (!document.fonts || !document.fonts.ready) return;
+    document.fonts.ready.then(() => {
+      const el = rulerRef.current; if (!el) return;
+      const w = el.getBoundingClientRect().width / 10;
+      if (w > 0 && Math.abs(w - chwRef.current) > 0.05) setChW(w);
+    });
+  }, []);
+  // Re-seed from the parent when initialValue changes externally (e.g. Discard),
+  // but not when it's merely echoing the ChordPro this editor itself emitted.
+  useEffect(() => {
+    if (initialValue !== lastEmitted.current) { lastEmitted.current = initialValue; setPicker(null); setDrag(null); setLines(gridFromChordPro(initialValue)); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialValue]);
+  // Tear down any in-flight drag's window listeners if we unmount mid-drag.
+  useEffect(() => () => { if (dragCleanup.current) dragCleanup.current(); }, []);
 
   // ---- line edits ----
   const setLineText = (li, text) => {
@@ -94,7 +114,8 @@ export function GridEditor({ initialValue = '', onChange }) {
     if (suppressClick.current) { suppressClick.current = false; return; } // a drag just ended
     if (e.target.closest('.ge-chip') || e.target.closest('.ge-pop')) return;
     const rect = e.currentTarget.getBoundingClientRect();
-    openPicker(li, Math.max(0, Math.round((e.clientX - rect.left) / chwRef.current)));
+    const len = linesRef.current[li].text.length; // clamp so a chord can't land past the line's end
+    openPicker(li, Math.max(0, Math.min(len, Math.round((e.clientX - rect.left) / chwRef.current))));
   };
   const setChord = (name) => {
     const n = (name || '').trim(); if (!picker || !n) return;
@@ -111,7 +132,8 @@ export function GridEditor({ initialValue = '', onChange }) {
     if (fromCi === toCi) return;
     const cur = linesRef.current, ln = cur[li], name = ln.chords[fromCi];
     if (name == null) return;
-    const chords = { ...ln.chords }; delete chords[fromCi]; chords[toCi] = name; // drop onto an occupied slot replaces it
+    if (ln.chords[toCi] != null) return; // target slot is taken — don't clobber the chord there
+    const chords = { ...ln.chords }; delete chords[fromCi]; chords[toCi] = name;
     emit(cur.map((l, i) => (i === li ? { ...l, chords } : l)));
   };
 
@@ -131,16 +153,23 @@ export function GridEditor({ initialValue = '', onChange }) {
       info.curCi = nc;
       setDrag({ li, fromCi: ci, curCi: nc });
     };
-    const up = () => {
+    const cleanup = () => {
       window.removeEventListener('pointermove', move);
       window.removeEventListener('pointerup', up);
-      dragRef.current = null;
+      window.removeEventListener('pointercancel', cancel);
+      dragRef.current = null; dragCleanup.current = null;
+    };
+    const up = () => {
+      cleanup();
       if (info.moved) { moveChord(li, ci, info.curCi); suppressClick.current = true; setTimeout(() => { suppressClick.current = false; }, 80); }
       else openPicker(li, ci);
       setDrag(null);
     };
+    const cancel = () => { cleanup(); setDrag(null); }; // gesture aborted (multi-touch / interruption) — don't commit a move
+    dragCleanup.current = cleanup;
     window.addEventListener('pointermove', move);
     window.addEventListener('pointerup', up);
+    window.addEventListener('pointercancel', cancel);
   };
 
   const renderPicker = (li, ci) => {
