@@ -13,7 +13,7 @@ import { cleanToChordPro } from './chordpro.js';
 import { isMostlyTab } from './tab.js';
 
 const API_URL = 'https://api.anthropic.com/v1/messages';
-const MODEL = 'claude-haiku-4-5';
+const MODEL = 'claude-sonnet-5';
 
 const PROMPT = `You are given an image of a song's chord sheet (chords positioned above the lyrics), or possibly guitar tablature. Transcribe it faithfully.
 
