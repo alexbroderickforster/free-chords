@@ -7,6 +7,7 @@ import { cleanToChordPro, uniqueChords, toSections, looksFlattened } from '../li
 import { isMostlyTab } from '../lib/tab.js';
 import { extractSongFromImage } from '../lib/imageImport.js';
 import { ApiKeyField } from './Settings.jsx';
+import { GridEditor } from './GridEditor.jsx';
 
 const SAMPLE = `C               G
 Slip inside the eye of your mind
@@ -34,6 +35,7 @@ export function AddImport({ onSave, onBack, knownTags = [], artistOptions = [], 
   const [view, setView] = useState('preview');
   const [format, setFormat] = useState('chordpro'); // 'chordpro' | 'tab'
   const [formatTouched, setFormatTouched] = useState(false);
+  const [inputMode, setInputMode] = useState('paste'); // 'paste' | 'grid'
 
   // Image upload state.
   const imgRef = useRef(null);
@@ -199,8 +201,18 @@ export function AddImport({ onSave, onBack, knownTags = [], artistOptions = [], 
           <SegmentedControl
             options={[{ value: 'chordpro', label: 'Chords' }, { value: 'tab', label: 'Tab' }]}
             value={format} onChange={pickFormat} />
+          {!isTab && (
+            <div className="ge-modewrap">
+              <label className="fc-eyebrow">Editor</label>
+              <SegmentedControl options={[{ value: 'paste', label: 'Paste' }, { value: 'grid', label: 'Grid' }]} value={inputMode} onChange={setInputMode} />
+            </div>
+          )}
         </div>
 
+        {!isTab && inputMode === 'grid' ? (
+          <GridEditor initialValue={cleaned || (raw ? cleanToChordPro(raw) : '')} onChange={(cp) => { setCleaned(cp); setRaw(cp); }} />
+        ) : (
+        <>
         <div className="add-imgblock">
           <div className="add-imgrow">
             <Button variant="quiet" iconLeft={<Icon n="image" s={17} />} onClick={() => imgRef.current && imgRef.current.click()} disabled={!!imgBusy}>
@@ -253,6 +265,8 @@ export function AddImport({ onSave, onBack, knownTags = [], artistOptions = [], 
           </div>
           <Button variant="primary" iconLeft={<Icon n="wand-2" s={18} />} onClick={doClean}>{isTab ? 'Preview' : 'Clean up'}</Button>
         </div>
+        </>
+        )}
       </div>
 
       {cleaned && (

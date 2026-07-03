@@ -3,6 +3,7 @@
 import React, { useState, useMemo } from 'react';
 import { Input, Autocomplete, Button, Stepper, Card, SegmentedControl, Icon } from '../components/index.js';
 import { toSections } from '../lib/chordpro.js';
+import { GridEditor } from './GridEditor.jsx';
 
 export function SongEdit({ song, knownTags = [], artistOptions = [], albumOptions = [], onSave, onCancel, onDelete }) {
   const [title, setTitle] = useState(song.title || '');
@@ -14,6 +15,7 @@ export function SongEdit({ song, knownTags = [], artistOptions = [], albumOption
   const [tagDraft, setTagDraft] = useState('');
   const [source, setSource] = useState(song.source || '');
   const [format, setFormat] = useState(song.format === 'tab' ? 'tab' : 'chordpro');
+  const [editMode, setEditMode] = useState('text'); // 'text' | 'grid'
   const [confirmDel, setConfirmDel] = useState(false);
 
   const isTab = format === 'tab';
@@ -100,9 +102,22 @@ export function SongEdit({ song, knownTags = [], artistOptions = [], albumOption
           <SegmentedControl
             options={[{ value: 'chordpro', label: 'Chords' }, { value: 'tab', label: 'Tab' }]}
             value={format} onChange={setFormat} />
+          {!isTab && (
+            <div className="ge-modewrap">
+              <label className="fc-eyebrow">Editor</label>
+              <SegmentedControl options={[{ value: 'text', label: 'Text' }, { value: 'grid', label: 'Grid' }]} value={editMode} onChange={setEditMode} />
+            </div>
+          )}
         </div>
-        <Input label={isTab ? 'Tab' : 'ChordPro'} multiline mono rows={12} value={source}
-          placeholder={isTab ? 'Paste tablature — kept exactly as-is' : '[C]Put chords in brackets [G]above the words'} onChange={(e) => setSource(e.target.value)} />
+        {isTab ? (
+          <Input label="Tab" multiline mono rows={12} value={source}
+            placeholder="Paste tablature — kept exactly as-is" onChange={(e) => setSource(e.target.value)} />
+        ) : editMode === 'grid' ? (
+          <GridEditor initialValue={source} onChange={setSource} />
+        ) : (
+          <Input label="ChordPro" multiline mono rows={12} value={source}
+            placeholder="[C]Put chords in brackets [G]above the words" onChange={(e) => setSource(e.target.value)} />
+        )}
       </div>
 
       <div className="add-preview">

@@ -137,6 +137,42 @@ body {
 .edit-emptyprev { color: var(--ink-faint); font-size: var(--text-sm); }
 .edit-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--line); flex-wrap: wrap; }
 .edit-foot-r { display: flex; gap: 10px; margin-left: auto; }
+
+/* ---- Grid chord editor ---- */
+.ge-modewrap { display: inline-flex; align-items: center; gap: 8px; margin-left: auto; }
+.ge { border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 14px 14px 10px; background: var(--surface); position: relative; }
+.ge-mono { font-family: var(--font-mono); font-size: 18px; letter-spacing: 0; }
+.ge-ruler { position: absolute; visibility: hidden; pointer-events: none; white-space: pre; top: 0; left: 0; }
+.ge-line { position: relative; padding-right: 26px; }
+.ge-line--lyric + .ge-line--section { margin-top: 10px; }
+.ge-body { position: relative; }
+.ge-lane { position: relative; height: 26px; cursor: pointer; border-radius: 4px; }
+.ge-lane:hover { background: color-mix(in oklab, var(--accent) 6%, transparent); box-shadow: inset 0 -1px 0 var(--line); }
+.ge-chip { position: absolute; bottom: 1px; padding: 1px 5px; border: none; background: var(--accent-soft); color: var(--accent); font-family: var(--font-mono); font-weight: 600; font-size: 14px; line-height: 1.35; border-radius: 5px; cursor: pointer; white-space: nowrap; transform: translateX(-2px); }
+.ge-chip:hover { background: color-mix(in oklab, var(--accent) 22%, transparent); }
+.ge-lyric, .ge-raw { width: 100%; border: none; background: transparent; padding: 2px 0; color: var(--ink); outline: none; }
+.ge-lyric::placeholder { color: var(--ink-faint); }
+.ge-raw { color: var(--ink-soft); font-size: 15px; }
+.ge-sectionrow { display: flex; align-items: center; gap: 7px; }
+.ge-sectionrow svg { color: var(--accent); flex: none; }
+.ge-section-input { border: none; background: transparent; outline: none; font-family: var(--font-sans); font-weight: 700; font-size: var(--text-sm); letter-spacing: .06em; text-transform: uppercase; color: var(--accent); width: 100%; padding: 4px 0; }
+.ge-section-input::placeholder { color: var(--ink-faint); text-transform: none; letter-spacing: 0; font-weight: 600; }
+.ge-del { position: absolute; top: 6px; right: -2px; width: 24px; height: 24px; border: none; background: transparent; color: var(--ink-faint); border-radius: 50%; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; opacity: 0; transition: opacity .12s; }
+.ge-line:hover .ge-del { opacity: 1; }
+.ge-del:hover { background: var(--surface-hover); color: var(--danger); }
+.ge-pop { position: absolute; top: calc(100% + 4px); z-index: 20; width: 240px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); padding: 12px; }
+.ge-pop-filter { width: 100%; margin-bottom: 10px; border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--bg); color: var(--ink); padding: 8px 10px; outline: none; }
+.ge-pop-filter:focus { border-color: var(--accent); }
+.ge-pop-lbl { font-size: var(--text-xs); color: var(--ink-faint); margin: 0 0 6px; letter-spacing: .04em; }
+.ge-pop-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.ge-pop-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.ge-pop-chord { border: 1px solid var(--line); background: var(--bg); color: var(--ink); font-family: var(--font-mono); font-size: 13px; padding: 6px 4px; border-radius: var(--radius-md); cursor: pointer; }
+.ge-pop-chord:hover { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+.ge-pop-remove { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; margin-top: 10px; border: 1px solid color-mix(in oklab, var(--danger) 30%, transparent); background: transparent; color: var(--danger); font-family: var(--font-sans); font-weight: 600; font-size: var(--text-sm); padding: 8px; border-radius: var(--radius-md); cursor: pointer; }
+.ge-pop-remove:hover { background: color-mix(in oklab, var(--danger) 10%, transparent); }
+.ge-toolbar { display: flex; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); }
+.ge-tbtn { display: inline-flex; align-items: center; gap: 5px; border: 1px solid var(--line); background: var(--bg); color: var(--ink-soft); font-family: var(--font-sans); font-weight: 600; font-size: var(--text-sm); padding: 6px 12px; border-radius: 999px; cursor: pointer; }
+.ge-tbtn:hover { border-color: var(--accent); color: var(--accent); }
 .edit-confirm { display: inline-flex; align-items: center; gap: 8px; color: var(--ink); font-size: var(--text-sm); font-weight: 600; }
 
 /* ---- Backup + sync controls (sidebar footer on desktop, library on mobile) ---- */
