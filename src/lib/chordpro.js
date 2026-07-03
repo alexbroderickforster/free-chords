@@ -133,21 +133,36 @@ export function cleanToChordPro(rawText) {
     if (isBlankLine(line)) { body.push(''); continue; }
     if (isSectionHeader(line)) { body.push(sectionComment(line)); continue; }
     if (isChordLine(line)) {
-      // A run of consecutive position-less chord lines sitting directly on a
-      // lyric is a PDF/print copy that broke one chord row into several lines
-      // (each chord dropped onto its own line, column info lost). Gather those
-      // chords back onto one row above the lyric instead of stranding all but
-      // one and jamming the last at column 0.
+      // Gather the maximal run of consecutive chord lines.
       let j = i;
       while (j < lines.length && isChordLine(lines[j])) j++;
+      const run = lines.slice(i, j);
       const after = lines[j];
       const afterIsLyric = after != null && !isBlankLine(after) && !isSectionHeader(after);
-      if (afterIsLyric && j - i >= 2 && lines.slice(i, j).every((l) => !isPositioned(l))) {
-        body.push(chordsOnlyLine(lines.slice(i, j).join(' '))); // one coalesced chord row
-        body.push(after);                                        // the lyric, left plain
-        i = j; // the run and its lyric are consumed
+
+      // Position-less chord lines (flush-left, single-spaced) carry no real
+      // column info — the hallmark of an OCR/PDF copy that flattened the layout,
+      // or one chord row split across several lines. Their column numbers are
+      // meaningless, so we must NOT thread the chords into the lyric (that splits
+      // words mid-syllable, e.g. "I d[D]on't"). Put them on one row above it —
+      // except a lone chord, which reads fine sitting over the first word.
+      if (run.every((l) => !isPositioned(l))) {
+        const tokens = run.join(' ').trim().split(/\s+/).filter(Boolean);
+        if (afterIsLyric && tokens.length === 1) {
+          body.push(mergeChordsIntoLyric(run[0], after)); // lone chord over the first word
+          i = j;
+        } else if (afterIsLyric) {
+          body.push(chordsOnlyLine(run.join(' '))); // several chords → one row above…
+          body.push(after);                          // …the lyric, left plain
+          i = j;
+        } else {
+          for (const l of run) body.push(chordsOnlyLine(l)); // intro / turnaround rows, kept per line
+          i = j - 1;
+        }
         continue;
       }
+
+      // A positioned chord line keeps its exact column placement.
       const next = lines[i + 1];
       if (next != null && !isBlankLine(next) && !isChordLine(next) && !isSectionHeader(next)) {
         body.push(mergeChordsIntoLyric(line, next)); // aligned: place each by column
