@@ -284,6 +284,10 @@ body {
 .add-imgmsg--ok { color: var(--ink-soft); }
 .add-imgmsg--ok svg { color: var(--good); }
 .add-imgmsg--err { color: var(--danger); }
+.add-flathint { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 12px; padding: 12px 14px; background: var(--accent-soft); border: 1px solid color-mix(in oklab, var(--accent) 22%, transparent); border-radius: var(--radius-md); }
+.add-flathint-ic { color: var(--accent); flex: none; }
+.add-flathint-body { flex: 1; min-width: 200px; font-size: var(--text-sm); color: var(--ink-soft); line-height: 1.5; }
+.add-flathint-body strong { color: var(--ink); font-weight: 650; }
 .add-preview { margin-top: 24px; }
 .add-preview-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
 .add-chips { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 12px; }

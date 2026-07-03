@@ -3,7 +3,7 @@
 // on-device OCR when no key is set), preview it, and save.
 import React, { useState, useRef } from 'react';
 import { Input, Autocomplete, Button, Card, SegmentedControl, Stepper, Tag, Icon } from '../components/index.js';
-import { cleanToChordPro, uniqueChords, toSections } from '../lib/chordpro.js';
+import { cleanToChordPro, uniqueChords, toSections, looksFlattened } from '../lib/chordpro.js';
 import { isMostlyTab } from '../lib/tab.js';
 import { extractSongFromImage } from '../lib/imageImport.js';
 
@@ -107,6 +107,9 @@ export function AddImport({ onSave, onBack, knownTags = [], artistOptions = [], 
 
   const chords = (!isTab && cleaned) ? uniqueChords(cleaned) : [];
   const previewSections = (!isTab && cleaned) ? toSections(cleaned) : [];
+  // A paste that lost its column layout (typically copied from a PDF) — nudge the
+  // user toward the screenshot importer, which recovers positions from the image.
+  const flattened = (!isTab && raw.trim()) ? looksFlattened(raw) : false;
 
   const save = () => {
     onSave && onSave({
@@ -214,6 +217,15 @@ export function AddImport({ onSave, onBack, knownTags = [], artistOptions = [], 
 
         <Input label={isTab ? 'Paste tab' : 'Paste chords'} multiline mono rows={9} value={raw}
           placeholder={isTab ? TAB_SAMPLE : SAMPLE} onChange={(e) => onRaw(e.target.value)} />
+        {flattened && (
+          <div className="add-flathint">
+            <Icon n="image" s={18} cls="add-flathint-ic" />
+            <div className="add-flathint-body">
+              <strong>This looks copied from a PDF.</strong> The chords lost their column positions, so they’ll stack above each line instead of sitting over the right words. Upload the screenshot instead for proper alignment.
+            </div>
+            <Button variant="secondary" size="sm" iconLeft={<Icon n="image" s={15} />} onClick={() => imgRef.current && imgRef.current.click()} disabled={!!imgBusy}>Upload screenshot</Button>
+          </div>
+        )}
         <div className="add-actions">
           <div className="add-actions-l">
             <Button variant="quiet" iconLeft={<Icon n="clipboard" s={17} />} onClick={pasteClip}>Paste</Button>

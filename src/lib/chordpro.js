@@ -170,3 +170,28 @@ export function cleanToChordPro(rawText) {
   }
   return out.join('\n').trim();
 }
+
+// Does this paste look like a PDF/print copy that flattened the 2-D chord layout
+// (each chord dropped onto its own line, blank separators gone, positions lost)?
+// We count the runs of 2+ position-less chord lines sitting directly on a lyric —
+// the exact pattern cleanToChordPro has to regroup. A well-aligned webpage paste
+// has none; a flattened one has several (or one long run). Used to nudge the user
+// toward the screenshot importer, which reads positions from the image instead.
+export function looksFlattened(rawText) {
+  const lines = String(rawText || '').replace(/\r\n?/g, '\n').split('\n').map((l) => l.replace(/\s+$/, ''));
+  let events = 0;
+  let bigRun = false;
+  for (let i = 0; i < lines.length; i++) {
+    if (!isChordLine(lines[i])) continue;
+    let j = i;
+    while (j < lines.length && isChordLine(lines[j])) j++;
+    const after = lines[j];
+    const afterIsLyric = after != null && !isBlankLine(after) && !isSectionHeader(after);
+    if (afterIsLyric && j - i >= 2 && lines.slice(i, j).every((l) => !isPositioned(l))) {
+      events++;
+      if (j - i >= 3) bigRun = true; // 3+ stacked chord lines on one lyric is unmistakable
+    }
+    i = j - 1; // skip past this run of chord lines
+  }
+  return events >= 2 || bigRun;
+}
