@@ -6,7 +6,7 @@ import {
   AArrowDown, AArrowUp, SlidersHorizontal, Minimize2, Maximize2, RotateCcw,
   Play, Pause, Search, Clipboard, Wand2, Mic, Download, Upload, Pencil, Trash2, CircleAlert,
   ListMusic, SkipBack, SkipForward, ChevronUp, ChevronDown, Ear,
-  Image as ImageIcon, KeyRound,
+  Image as ImageIcon, KeyRound, Printer, FileDown, WifiOff,
 } from 'lucide-react';
 
 const ICONS = {
@@ -45,6 +45,9 @@ const ICONS = {
   'ear': Ear,
   'image': ImageIcon,
   'key-round': KeyRound,
+  'printer': Printer,
+  'file-down': FileDown,
+  'wifi-off': WifiOff,
 };
 
 export function Icon({ n, s = 20, cls, ...rest }) {

@@ -13,6 +13,8 @@ import { nextStatus } from './lib/music.js';
 import { BackupControls } from './screens/Backup.jsx';
 import { loadSongs, saveSongs, loadTags, saveTags, loadTheme, saveTheme, loadThemeAt, saveThemeAt, loadPrefs, savePrefs, loadDeletions, saveDeletions, loadSyncOptIn, saveSyncOptIn, loadPlaylists, savePlaylists, loadPlaylistDeletions, savePlaylistDeletions, loadKeyPing, saveKeyPing, loadApiKey, saveApiKey } from './lib/storage.js';
 import { exportSongbook, parseBackup } from './lib/backup.js';
+import { renderSongbookHtml, downloadHtml, openDoc } from './lib/songbookExport.js';
+import { isStandalone, isIos } from './lib/offline.js';
 import { isConfigured as syncConfigured, fullSync, push as syncPush, disconnect as syncDisconnect, warmUp as warmUpSync } from './lib/sync.js';
 import './styles/app.css';
 
@@ -59,6 +61,8 @@ export function App() {
   const [playSession, setPlaySession] = useState(null); // { playlistId, index } — ephemeral, per-device
   const [keyPing, setKeyPing] = useState(() => loadKeyPing());
   const [apiKey, setApiKey] = useState(() => loadApiKey());
+  const [canInstall, setCanInstall] = useState(false);
+  const installEvt = useRef(null);
   const [syncStatus, setSyncStatus] = useState('idle'); // idle | syncing | synced | offline | error
   const [syncError, setSyncError] = useState(''); // human-readable reason, shown persistently
   const [themeAt, setThemeAt] = useState(() => loadThemeAt());
@@ -79,6 +83,26 @@ export function App() {
   useEffect(() => { savePlaylistDeletions(playlistDeletions); }, [playlistDeletions]);
   useEffect(() => { saveKeyPing(keyPing); }, [keyPing]);
   useEffect(() => { saveApiKey(apiKey); }, [apiKey]);
+
+  // Capture the browser's install prompt so "Add to home screen" (Chrome/Android)
+  // can be offered from the Offline section. iOS has no such event (Share sheet).
+  useEffect(() => {
+    const onPrompt = (e) => { e.preventDefault(); installEvt.current = e; setCanInstall(true); };
+    const onInstalled = () => { installEvt.current = null; setCanInstall(false); };
+    window.addEventListener('beforeinstallprompt', onPrompt);
+    window.addEventListener('appinstalled', onInstalled);
+    return () => {
+      window.removeEventListener('beforeinstallprompt', onPrompt);
+      window.removeEventListener('appinstalled', onInstalled);
+    };
+  }, []);
+  const promptInstall = async () => {
+    const e = installEvt.current;
+    if (!e) return;
+    e.prompt();
+    try { await e.userChoice; } catch { /* dismissed */ }
+    installEvt.current = null; setCanInstall(false);
+  };
 
   // Register any tag that appears on a song into the known-tags list.
   useEffect(() => {
@@ -144,6 +168,20 @@ export function App() {
   // Distinct artists / albums already in the library, for form autocomplete.
   const artistOptions = useMemo(() => Array.from(new Set(songs.map((s) => (s.artist || '').trim()).filter((a) => a && a !== 'Unknown'))).sort((a, b) => a.localeCompare(b)), [songs]);
   const albumOptions = useMemo(() => Array.from(new Set(songs.map((s) => (s.album || '').trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b)), [songs]);
+
+  // ---- Export a song / playlist as a standalone document ----
+  // kind: 'html' → download an offline web page that plays through; 'pdf' → open
+  // a print-styled page and invoke the print dialog (Save as PDF).
+  const bpmFor = (s) => { const p = prefsFor(s.id); return { useBpm: p.useBpm, bpm: p.bpm, speed: p.speed }; };
+  const exportDoc = (list, name, kind) => {
+    const songsOut = (list || []).filter(Boolean);
+    if (!songsOut.length) { setToast('Nothing to export yet'); return; }
+    const html = renderSongbookHtml(songsOut, { title: name, mode: kind === 'pdf' ? 'print' : 'player', bpmFor });
+    if (kind === 'pdf') { if (!openDoc(html)) setToast('Allow pop-ups to save as PDF'); }
+    else downloadHtml(`${slugify(name)}.html`, html);
+  };
+  const exportPlaylist = (pl, kind) => { if (pl) exportDoc(resolvePlaylistSongs(pl), pl.name || 'Playlist', kind); };
+  const exportSong = (s, kind) => { if (s) exportDoc([s], s.title || 'Song', kind); };
 
   const createPlaylist = (name) => {
     const now = Date.now();
@@ -377,6 +415,8 @@ export function App() {
     syncConfigured: syncConfigured(), syncOn, syncStatus, syncError, lastSyncedAt,
     onConnectSync: connectSync, onSyncNow: () => syncNow(true), onDisconnectSync: disconnectSync,
     apiKey, onSaveApiKey: setApiKey,
+    songCount: songs.length, standalone: isStandalone(), ios: isIos(),
+    canInstall, onInstall: promptInstall,
   };
 
   const markSrc = `${import.meta.env.BASE_URL}freechords-mark.svg`;
@@ -400,12 +440,12 @@ export function App() {
   const screen = (song && editing)
     ? <SongEdit song={song} knownTags={knownTags} artistOptions={artistOptions} albumOptions={albumOptions} onSave={saveEdit} onCancel={() => setEditing(false)} onDelete={deleteSong} />
     : song
-    ? <SongView song={song} onBack={closeSong} onArtist={goArtist} dark={dark} onToggleTheme={toggleTheme} focusMode={focus} onToggleFocus={() => setFocus((f) => !f)} onToggleStar={toggleStar} onCycleStatus={cycleStatus} onUpdateTags={updateTags} onEdit={() => setEditing(true)} prefs={prefsFor(song.id)} onSavePref={(patch) => savePref(song.id, patch)} onCapo={(v) => updateSong(song.id, { capo: v })} onAddToPlaylist={setAddToPlaylistSong} playlist={svPlaylist} onPlaylistNext={playlistNext} onPlaylistPrev={playlistPrev} onPlaylistExit={exitPlaylist} keyPing={keyPing} onToggleKeyPing={() => setKeyPing((v) => !v)} />
+    ? <SongView song={song} onBack={closeSong} onArtist={goArtist} dark={dark} onToggleTheme={toggleTheme} focusMode={focus} onToggleFocus={() => setFocus((f) => !f)} onToggleStar={toggleStar} onCycleStatus={cycleStatus} onUpdateTags={updateTags} onEdit={() => setEditing(true)} prefs={prefsFor(song.id)} onSavePref={(patch) => savePref(song.id, patch)} onCapo={(v) => updateSong(song.id, { capo: v })} onAddToPlaylist={setAddToPlaylistSong} playlist={svPlaylist} onPlaylistNext={playlistNext} onPlaylistPrev={playlistPrev} onPlaylistExit={exitPlaylist} keyPing={keyPing} onToggleKeyPing={() => setKeyPing((v) => !v)} onExport={exportSong} />
     : (
       <main className="app-body">
         {tab === 'songs' && <Library songs={songs} tags={knownTags} onOpen={openSong} onAdd={() => setTab('add')} artistFilter={artistFilter} onClearArtist={() => setArtistFilter(null)} onArtist={goArtist} onToggleStar={toggleStar} onCycleStatus={cycleStatus} onAddToPlaylist={setAddToPlaylistSong}
           backupSlot={<BackupControls className="bk--mobile" {...backupProps} />} />}
-        {tab === 'playlists' && <Playlists playlists={playlists} albums={albumOptions} resolvePlaylistSongs={resolvePlaylistSongs} onOpenSong={openSong} onPlayPlaylist={startPlaylist} onCreatePlaylist={createPlaylist} onCreateAlbumPlaylist={createAlbumPlaylist} onRenamePlaylist={renamePlaylist} onDeletePlaylist={deletePlaylist} onRemoveSong={removeSongFromPlaylist} onMoveSong={movePlaylistSong} />}
+        {tab === 'playlists' && <Playlists playlists={playlists} albums={albumOptions} resolvePlaylistSongs={resolvePlaylistSongs} onOpenSong={openSong} onPlayPlaylist={startPlaylist} onCreatePlaylist={createPlaylist} onCreateAlbumPlaylist={createAlbumPlaylist} onRenamePlaylist={renamePlaylist} onDeletePlaylist={deletePlaylist} onRemoveSong={removeSongFromPlaylist} onMoveSong={movePlaylistSong} onExport={exportPlaylist} />}
         {tab === 'add' && <AddImport onBack={() => setTab('songs')} knownTags={knownTags} artistOptions={artistOptions} albumOptions={albumOptions} apiKey={apiKey} onSave={addSong} />}
         {tab === 'tuner' && <TunerView />}
       </main>

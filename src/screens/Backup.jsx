@@ -67,6 +67,7 @@ export function BackupControls({
   syncConfigured, syncOn, syncStatus, syncError, lastSyncedAt,
   onConnectSync, onSyncNow, onDisconnectSync,
   apiKey, onSaveApiKey,
+  songCount, standalone, ios, canInstall, onInstall,
 }) {
   const fileRef = useRef(null);
   const pick = (e) => {
@@ -110,6 +111,24 @@ export function BackupControls({
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {typeof songCount === 'number' && (
+        <div className="bk-offline">
+          <div className="fc-eyebrow bk-label">Offline</div>
+          <div className="bk-offline-ready"><Icon n="check" s={14} />{songCount} {songCount === 1 ? 'song' : 'songs'} saved on this device</div>
+          <p className="bk-offline-note">
+            Everything is stored here and plays with no signal — good for camping or a dead zone.{syncOn ? ' Pull the latest from Drive before you head out:' : ''}
+          </p>
+          {syncOn && (
+            <Button variant="ghost" size="sm" iconLeft={<Icon n="download" s={16} />} onClick={onSyncNow}>Update from Drive</Button>
+          )}
+          {!standalone && (canInstall
+            ? <Button variant="ghost" size="sm" iconLeft={<Icon n="plus" s={16} />} onClick={onInstall}>Add to home screen</Button>
+            : ios
+              ? <p className="bk-offline-hint">To install for offline: tap <b>Share</b>, then <b>Add to Home Screen</b>.</p>
+              : null)}
         </div>
       )}
 

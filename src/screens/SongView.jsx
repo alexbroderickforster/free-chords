@@ -22,7 +22,7 @@ function ChordLine({ segments }) {
 
 const COUNTDOWN_SECS = 5; // pause between songs in a playlist run
 
-export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMode, onToggleFocus, onToggleStar, onCycleStatus, onUpdateTags, onEdit, prefs = {}, onSavePref, onCapo, onAddToPlaylist, playlist = null, onPlaylistNext, onPlaylistPrev, onPlaylistExit, keyPing = false, onToggleKeyPing }) {
+export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMode, onToggleFocus, onToggleStar, onCycleStatus, onUpdateTags, onEdit, prefs = {}, onSavePref, onCapo, onAddToPlaylist, playlist = null, onPlaylistNext, onPlaylistPrev, onPlaylistExit, keyPing = false, onToggleKeyPing, onExport }) {
   const [transpose, setTranspose] = useState(prefs.transpose ?? 0);
   const [capo, setCapo] = useState(song.capo || 0);
   const [fontSize, setFontSize] = useState(prefs.fontSize ?? 28);
@@ -31,6 +31,7 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
   const [bpm, setBpm] = useState(prefs.bpm ?? 90);
   const [useBpm, setUseBpm] = useState(prefs.useBpm ?? false);
   const [tune, setTune] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
   const [hideChords, setHideChords] = useState(prefs.hideChords ?? false);
   const [tagDraft, setTagDraft] = useState('');
   const [tagEditing, setTagEditing] = useState(false);
@@ -268,6 +269,26 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
     return () => cancelAnimationFrame(rafRef.current);
   }, [playing, speed, useBpm, bpm, fontSize, transpose, hideChords]);
 
+  // Keep the screen awake while auto-scrolling, so a set plays through untouched
+  // (phones sleep otherwise, which pauses the scroll). Wake locks auto-release
+  // when the tab is hidden, so re-acquire when it comes back.
+  useEffect(() => {
+    if (!playing || typeof navigator === 'undefined' || !('wakeLock' in navigator)) return;
+    let lock = null, cancelled = false;
+    const acquire = async () => {
+      try { const l = await navigator.wakeLock.request('screen'); if (cancelled) l.release(); else lock = l; }
+      catch { /* denied / not visible — harmless */ }
+    };
+    acquire();
+    const onVis = () => { if (document.visibilityState === 'visible' && !lock) acquire(); };
+    document.addEventListener('visibilitychange', onVis);
+    return () => {
+      cancelled = true;
+      document.removeEventListener('visibilitychange', onVis);
+      if (lock) { try { lock.release(); } catch { /* ignore */ } lock = null; }
+    };
+  }, [playing]);
+
   // Space bar taps the tempo too (only in BPM mode, and never while typing).
   useEffect(() => {
     if (!useBpm) return;
@@ -380,12 +401,15 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
           {!isTab && <button className={'sv-ic' + (hideChords ? ' is-on' : '')} aria-label={hideChords ? 'Show chords' : 'Hide chords'} onClick={toggleHideChords}><Icon n="music" s={20} /></button>}
           <button className="sv-ic" aria-label="Smaller text" onClick={() => changeFont(-2)}><Icon n="a-arrow-down" s={21} /></button>
           <button className="sv-ic" aria-label="Larger text" onClick={() => changeFont(2)}><Icon n="a-arrow-up" s={21} /></button>
-          {!isTab && <button className={'sv-ic' + (tune ? ' is-on' : '')} aria-label="Transpose & capo" onClick={() => setTune((s) => !s)}><Icon n="sliders-horizontal" s={20} /></button>}
+          {!isTab && <button className={'sv-ic' + (tune ? ' is-on' : '')} aria-label="Transpose & capo" onClick={() => { setTune((s) => !s); setExportOpen(false); }}><Icon n="sliders-horizontal" s={20} /></button>}
           {onAddToPlaylist && (
             <button className="sv-ic" aria-label="Add to playlist" onClick={() => onAddToPlaylist(song)}><Icon n="list-music" s={20} /></button>
           )}
           {onEdit && (
             <button className="sv-ic" aria-label="Edit song" onClick={onEdit}><Icon n="pencil" s={19} /></button>
+          )}
+          {onExport && (
+            <button className={'sv-ic' + (exportOpen ? ' is-on' : '')} aria-label="Export song" onClick={() => { setExportOpen((o) => !o); setTune(false); }}><Icon n="file-down" s={20} /></button>
           )}
           {onToggleFocus && (
             <button className="sv-ic sv-ic--focus" aria-label={focusMode ? 'Exit full screen (Esc)' : 'Full-screen play mode'} title={focusMode ? 'Exit full screen (Esc)' : 'Full-screen play mode'} onClick={onToggleFocus}><Icon n={focusMode ? 'minimize-2' : 'maximize-2'} s={20} /></button>
@@ -396,6 +420,13 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
           <div className="sv-tune">
             <Stepper label="Transpose" value={transpose} min={-6} max={6} format={(v) => (v > 0 ? `+${v}` : String(v))} onChange={changeTranspose} />
             <Stepper label="Capo" value={capo} min={0} max={9} format={(v) => (v === 0 ? '—' : String(v))} onChange={changeCapo} />
+          </div>
+        )}
+        {exportOpen && onExport && (
+          <div className="sv-export">
+            <div className="sv-export-lbl fc-eyebrow">Take it offline</div>
+            <button className="sv-export-btn" onClick={() => { setExportOpen(false); onExport(song, 'html'); }}><Icon n="file-down" s={16} />Offline page</button>
+            <button className="sv-export-btn" onClick={() => { setExportOpen(false); onExport(song, 'pdf'); }}><Icon n="printer" s={16} />Print / PDF</button>
           </div>
         )}
       </header>

@@ -4,7 +4,7 @@
 import React, { useState } from 'react';
 import { Button, Card, Input, Icon } from '../components/index.js';
 
-export function Playlists({ playlists, albums = [], resolvePlaylistSongs, onOpenSong, onPlayPlaylist, onCreatePlaylist, onCreateAlbumPlaylist, onRenamePlaylist, onDeletePlaylist, onRemoveSong, onMoveSong }) {
+export function Playlists({ playlists, albums = [], resolvePlaylistSongs, onOpenSong, onPlayPlaylist, onCreatePlaylist, onCreateAlbumPlaylist, onRenamePlaylist, onDeletePlaylist, onRemoveSong, onMoveSong, onExport }) {
   const [openId, setOpenId] = useState(null);
   const [creating, setCreating] = useState(false);
   const [draftName, setDraftName] = useState('');
@@ -56,6 +56,16 @@ export function Playlists({ playlists, albums = [], resolvePlaylistSongs, onOpen
         <Button variant="primary" block iconLeft={<Icon n="play" s={18} />} disabled={songs.length === 0} onClick={() => onPlayPlaylist(open.id)}>
           {songs.length === 0 ? 'No songs yet' : `Play playlist · ${songs.length} ${songs.length === 1 ? 'song' : 'songs'}`}
         </Button>
+
+        {onExport && songs.length > 0 && (
+          <div className="pl-export">
+            <span className="pl-export-lbl fc-eyebrow">Take it offline</span>
+            <div className="pl-export-btns">
+              <button className="pl-export-btn" onClick={() => onExport(open, 'html')}><Icon n="file-down" s={16} />Offline page</button>
+              <button className="pl-export-btn" onClick={() => onExport(open, 'pdf')}><Icon n="printer" s={16} />Print / PDF</button>
+            </div>
+          </div>
+        )}
 
         {songs.length === 0 ? (
           <div className="pl-detail-empty">
