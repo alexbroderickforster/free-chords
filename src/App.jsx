@@ -7,14 +7,16 @@ import { SongEdit } from './screens/SongEdit.jsx';
 import { Library } from './screens/Library.jsx';
 import { Playlists } from './screens/Playlists.jsx';
 import { AddImport } from './screens/AddImport.jsx';
+import { Practice } from './screens/Practice.jsx';
 import { TunerView } from './screens/TunerView.jsx';
 import { SONGS, ALL_TAGS } from './data/songs.js';
 import { nextStatus } from './lib/music.js';
 import { Settings, SyncBadge } from './screens/Settings.jsx';
-import { loadSongs, saveSongs, loadTags, saveTags, loadTheme, saveTheme, loadThemeAt, saveThemeAt, loadPrefs, savePrefs, loadDeletions, saveDeletions, loadSyncOptIn, saveSyncOptIn, loadPlaylists, savePlaylists, loadPlaylistDeletions, savePlaylistDeletions, loadKeyPing, saveKeyPing, loadApiKey, saveApiKey } from './lib/storage.js';
+import { loadSongs, saveSongs, loadTags, saveTags, loadTheme, saveTheme, loadThemeAt, saveThemeAt, loadPrefs, savePrefs, loadDeletions, saveDeletions, loadSyncOptIn, saveSyncOptIn, loadPlaylists, savePlaylists, loadPlaylistDeletions, savePlaylistDeletions, loadKeyPing, saveKeyPing, loadApiKey, saveApiKey, loadLoops, saveLoops, loadLoopDeletions, saveLoopDeletions } from './lib/storage.js';
 import { exportSongbook, parseBackup } from './lib/backup.js';
 import { renderSongbookHtml, downloadHtml, openDoc } from './lib/songbookExport.js';
 import { isStandalone, isIos } from './lib/offline.js';
+import { paramsToLoop } from './lib/loop.js';
 import { isConfigured as syncConfigured, fullSync, push as syncPush, disconnect as syncDisconnect, warmUp as warmUpSync } from './lib/sync.js';
 import './styles/app.css';
 
@@ -22,8 +24,8 @@ const slugify = (s) =>
   (s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'song';
 
 // A fingerprint of the syncable data — used to push only when it actually changes.
-const syncSig = (songs, tags, prefs, deletions, theme, themeAt, playlists, playlistDeletions) =>
-  JSON.stringify({ s: songs, t: tags, p: prefs, d: deletions, th: theme, ta: themeAt, pl: playlists, pld: playlistDeletions });
+const syncSig = (songs, tags, prefs, deletions, theme, themeAt, playlists, playlistDeletions, loops, loopDeletions) =>
+  JSON.stringify({ s: songs, t: tags, p: prefs, d: deletions, th: theme, ta: themeAt, pl: playlists, pld: playlistDeletions, lp: loops, lpd: loopDeletions });
 
 // Is the app running as an installed (standalone) iOS web app? The Google
 // sign-in popup is structurally broken there, so we steer the user to a browser.
@@ -57,12 +59,15 @@ export function App() {
   const [syncOn, setSyncOn] = useState(() => loadSyncOptIn());
   const [playlists, setPlaylists] = useState(() => loadPlaylists());
   const [playlistDeletions, setPlaylistDeletions] = useState(() => loadPlaylistDeletions());
+  const [loops, setLoops] = useState(() => loadLoops());
+  const [loopDeletions, setLoopDeletions] = useState(() => loadLoopDeletions());
   const [addToPlaylistSong, setAddToPlaylistSong] = useState(null);
   const [playSession, setPlaySession] = useState(null); // { playlistId, index } — ephemeral, per-device
   const [keyPing, setKeyPing] = useState(() => loadKeyPing());
   const [apiKey, setApiKey] = useState(() => loadApiKey());
   const [canInstall, setCanInstall] = useState(false);
   const installEvt = useRef(null);
+  const [initialLoop, setInitialLoop] = useState(null);
   const [syncStatus, setSyncStatus] = useState('idle'); // idle | syncing | synced | offline | error
   const [syncError, setSyncError] = useState(''); // human-readable reason, shown persistently
   const [themeAt, setThemeAt] = useState(() => loadThemeAt());
@@ -81,6 +86,8 @@ export function App() {
   useEffect(() => { saveDeletions(deletions); }, [deletions]);
   useEffect(() => { savePlaylists(playlists); }, [playlists]);
   useEffect(() => { savePlaylistDeletions(playlistDeletions); }, [playlistDeletions]);
+  useEffect(() => { saveLoops(loops); }, [loops]);
+  useEffect(() => { saveLoopDeletions(loopDeletions); }, [loopDeletions]);
   useEffect(() => { saveKeyPing(keyPing); }, [keyPing]);
   useEffect(() => { saveApiKey(apiKey); }, [apiKey]);
 
@@ -96,6 +103,16 @@ export function App() {
       window.removeEventListener('appinstalled', onInstalled);
     };
   }, []);
+  // A shared loop link (?yt=…&a=…&b=…) opens straight into Practice.
+  useEffect(() => {
+    const loop = paramsToLoop(window.location.search);
+    if (loop) {
+      setInitialLoop(loop);
+      setTab('practice');
+      try { window.history.replaceState(null, '', import.meta.env.BASE_URL); } catch { /* ignore */ }
+    }
+  }, []);
+
   const promptInstall = async () => {
     const e = installEvt.current;
     if (!e) return;
@@ -183,6 +200,21 @@ export function App() {
   const exportPlaylist = (pl, kind) => { if (pl) exportDoc(resolvePlaylistSongs(pl), pl.name || 'Playlist', kind); };
   const exportSong = (s, kind) => { if (s) exportDoc([s], s.title || 'Song', kind, { single: true }); };
 
+  // ---- Saved practice loops (synced like playlists: LWW + tombstones) ----
+  const saveLoop = (loop) => {
+    const now = Date.now();
+    const ids = new Set(loops.map((l) => l.id));
+    const base = 'loop-' + slugify(loop.name || 'loop');
+    let id = base, n = 2;
+    while (ids.has(id)) id = `${base}-${n++}`;
+    setLoops((prev) => [{ ...loop, id, createdAt: now, updatedAt: now }, ...prev]);
+    setToast('Loop saved');
+  };
+  const deleteLoop = (id) => {
+    setLoops((prev) => prev.filter((l) => l.id !== id));
+    setLoopDeletions((prev) => ({ ...prev, [id]: Date.now() }));
+  };
+
   const createPlaylist = (name) => {
     const now = Date.now();
     const ids = new Set(playlists.map((p) => p.id));
@@ -255,7 +287,7 @@ export function App() {
     version: 1, updatedAt: Date.now(),
     songs, tags: knownTags, prefs, deletions,
     theme: dark ? 'dark' : 'light', themeAt,
-    playlists, playlistDeletions,
+    playlists, playlistDeletions, loops, loopDeletions,
   });
   const adoptDoc = (doc) => {
     if (!doc) return;
@@ -265,12 +297,14 @@ export function App() {
     if (doc.deletions && typeof doc.deletions === 'object') setDeletions(doc.deletions);
     if (Array.isArray(doc.playlists)) setPlaylists(doc.playlists);
     if (doc.playlistDeletions && typeof doc.playlistDeletions === 'object') setPlaylistDeletions(doc.playlistDeletions);
+    if (Array.isArray(doc.loops)) setLoops(doc.loops);
+    if (doc.loopDeletions && typeof doc.loopDeletions === 'object') setLoopDeletions(doc.loopDeletions);
     if (doc.theme && (doc.themeAt || 0) > themeAt) { setDark(doc.theme === 'dark'); setThemeAt(doc.themeAt || Date.now()); }
   };
   // Fingerprint of what's currently on Drive, so we only push real changes.
-  const lastSyncSig = useRef(syncSig(songs, knownTags, prefs, deletions, dark ? 'dark' : 'light', themeAt, playlists, playlistDeletions));
+  const lastSyncSig = useRef(syncSig(songs, knownTags, prefs, deletions, dark ? 'dark' : 'light', themeAt, playlists, playlistDeletions, loops, loopDeletions));
   const markSynced = (merged) => {
-    lastSyncSig.current = syncSig(merged.songs, merged.tags, merged.prefs, merged.deletions, merged.theme, merged.themeAt, merged.playlists, merged.playlistDeletions);
+    lastSyncSig.current = syncSig(merged.songs, merged.tags, merged.prefs, merged.deletions, merged.theme, merged.themeAt, merged.playlists, merged.playlistDeletions, merged.loops, merged.loopDeletions);
     setLastSyncedAt(Date.now());
   };
 
@@ -325,7 +359,7 @@ export function App() {
   // last sync — not on plain page loads or tab switches.
   useEffect(() => {
     if (!syncOn) return;
-    const sig = syncSig(songs, knownTags, prefs, deletions, dark ? 'dark' : 'light', themeAt, playlists, playlistDeletions);
+    const sig = syncSig(songs, knownTags, prefs, deletions, dark ? 'dark' : 'light', themeAt, playlists, playlistDeletions, loops, loopDeletions);
     if (sig === lastSyncSig.current) return; // nothing new to save
     if (typeof navigator !== 'undefined' && !navigator.onLine) { setSyncStatus('offline'); return; }
     setSyncStatus('syncing');
@@ -336,7 +370,7 @@ export function App() {
     }, 1500);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [songs, knownTags, prefs, deletions, dark, themeAt, syncOn, playlists, playlistDeletions]);
+  }, [songs, knownTags, prefs, deletions, dark, themeAt, syncOn, playlists, playlistDeletions, loops, loopDeletions]);
 
   // Editing a saved song.
   const saveEdit = (id, patch) => { updateSong(id, patch); setEditing(false); setToast('Saved changes'); };
@@ -404,6 +438,7 @@ export function App() {
   const navItems = [
     { value: 'songs', label: 'Songs', icon: <Icon n="library" s={22} /> },
     { value: 'playlists', label: 'Playlists', icon: <Icon n="list-music" s={22} /> },
+    { value: 'practice', label: 'Practice', icon: <Icon n="repeat" s={22} /> },
     { value: 'tuner', label: 'Tuner', icon: <Icon n="audio-lines" s={22} /> },
     { value: 'settings', label: 'Settings', icon: <Icon n="settings" s={22} /> },
   ];
@@ -447,6 +482,7 @@ export function App() {
         {tab === 'songs' && <Library songs={songs} tags={knownTags} onOpen={openSong} onAdd={() => setTab('add')} artistFilter={artistFilter} onClearArtist={() => setArtistFilter(null)} onArtist={goArtist} onToggleStar={toggleStar} onCycleStatus={cycleStatus} onAddToPlaylist={setAddToPlaylistSong} />}
         {tab === 'playlists' && <Playlists playlists={playlists} albums={albumOptions} resolvePlaylistSongs={resolvePlaylistSongs} onOpenSong={openSong} onPlayPlaylist={startPlaylist} onCreatePlaylist={createPlaylist} onCreateAlbumPlaylist={createAlbumPlaylist} onRenamePlaylist={renamePlaylist} onDeletePlaylist={deletePlaylist} onRemoveSong={removeSongFromPlaylist} onMoveSong={movePlaylistSong} onExport={exportPlaylist} />}
         {tab === 'add' && <AddImport onBack={() => setTab('songs')} knownTags={knownTags} artistOptions={artistOptions} albumOptions={albumOptions} apiKey={apiKey} onSave={addSong} />}
+        {tab === 'practice' && <Practice loops={loops} onSaveLoop={saveLoop} onDeleteLoop={deleteLoop} initialLoop={initialLoop} />}
         {tab === 'tuner' && <TunerView />}
         {tab === 'settings' && <Settings {...backupProps} dark={dark} onToggleTheme={toggleTheme} />}
       </main>

@@ -58,12 +58,30 @@ export function mergeDocs(a, b) {
   for (const p of playlists) {
     if (playlistDeletions[p.id] && (p.updatedAt || 0) > playlistDeletions[p.id]) delete playlistDeletions[p.id];
   }
+  // Saved loops: same last-write-wins-by-updatedAt + tombstone scheme.
+  const loopDeletions = { ...(a.loopDeletions || {}) };
+  for (const [id, at] of Object.entries(b.loopDeletions || {})) {
+    if (!loopDeletions[id] || at > loopDeletions[id]) loopDeletions[id] = at;
+  }
+  const lpById = {};
+  for (const l of [...(a.loops || []), ...(b.loops || [])]) {
+    if (!l || !l.id) continue;
+    const prev = lpById[l.id];
+    if (!prev || (l.updatedAt || 0) > (prev.updatedAt || 0)) lpById[l.id] = l;
+  }
+  const loops = Object.values(lpById).filter((l) => {
+    const delAt = loopDeletions[l.id];
+    return !(delAt && delAt >= (l.updatedAt || 0));
+  });
+  for (const l of loops) {
+    if (loopDeletions[l.id] && (l.updatedAt || 0) > loopDeletions[l.id]) delete loopDeletions[l.id];
+  }
   // Theme: last-write-wins by its own timestamp.
   const themed = [];
   if (a.theme) themed.push({ theme: a.theme, themeAt: a.themeAt || 0 });
   if (b.theme) themed.push({ theme: b.theme, themeAt: b.themeAt || 0 });
   themed.sort((x, y) => y.themeAt - x.themeAt);
-  const out = { songs, tags, prefs, deletions, playlists, playlistDeletions };
+  const out = { songs, tags, prefs, deletions, playlists, playlistDeletions, loops, loopDeletions };
   if (themed.length) { out.theme = themed[0].theme; out.themeAt = themed[0].themeAt; }
   return out;
 }

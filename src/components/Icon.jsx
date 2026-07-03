@@ -7,6 +7,7 @@ import {
   Play, Pause, Search, Clipboard, Wand2, Mic, Download, Upload, Pencil, Trash2, CircleAlert,
   ListMusic, SkipBack, SkipForward, ChevronUp, ChevronDown, Ear,
   Image as ImageIcon, KeyRound, Printer, FileDown, WifiOff, Settings as SettingsIcon,
+  Repeat, Share2, Bookmark,
 } from 'lucide-react';
 
 const ICONS = {
@@ -49,6 +50,9 @@ const ICONS = {
   'file-down': FileDown,
   'wifi-off': WifiOff,
   'settings': SettingsIcon,
+  'repeat': Repeat,
+  'share-2': Share2,
+  'bookmark': Bookmark,
 };
 
 export function Icon({ n, s = 20, cls, ...rest }) {

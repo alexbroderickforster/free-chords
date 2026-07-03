@@ -313,6 +313,91 @@ body {
 .pr-logtitle { font-weight: 600; color: var(--ink); }
 .pr-logsub { font-size: var(--text-sm); color: var(--ink-soft); margin-top: 2px; }
 
+/* ---- Practice (A/B loop tool) ---- */
+.practice { max-width: 640px; }
+.pr-source { display: flex; gap: 10px; align-items: stretch; margin-top: 6px; flex-wrap: wrap; }
+.pr-source > .fc-field { flex: 1; min-width: 200px; }
+.pr-source-actions { display: flex; gap: 8px; align-items: stretch; }
+.pr-upload { display: inline-flex; align-items: center; gap: 7px; padding: 0 14px; min-height: var(--tap-min); border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--surface); color: var(--ink-soft); font-family: var(--font-sans); font-size: var(--text-sm); font-weight: 600; cursor: pointer; white-space: nowrap; transition: color .12s, border-color .12s; }
+.pr-upload:hover { color: var(--accent); border-color: var(--accent-tint); }
+.pr-error { display: flex; align-items: flex-start; gap: 6px; color: var(--danger); font-size: var(--text-sm); line-height: 1.45; margin: 10px 2px 0; }
+.pr-error svg { flex: none; margin-top: 2px; }
+.pr-empty { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 40px 20px; margin-top: 20px; color: var(--ink-faint); text-align: center; }
+.pr-empty svg { color: var(--ink-faint); }
+
+.pr-player { margin-top: 18px; }
+.pr-yt { position: relative; width: 100%; aspect-ratio: 16 / 9; border-radius: var(--radius-lg); overflow: hidden; background: #000; }
+.pr-yt > div, .pr-yt iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.pr-audiocard { display: flex; align-items: center; gap: 12px; padding: 18px 20px; border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--surface-sunken); color: var(--ink-soft); }
+.pr-audiocard svg { color: var(--accent); flex: none; }
+.pr-audioname { font-weight: 600; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.pr-timeline { margin-top: 16px; }
+.pr-track { position: relative; height: 26px; cursor: pointer; touch-action: none; }
+.pr-track::before { content: ''; position: absolute; left: 0; right: 0; top: 11px; height: 4px; border-radius: 2px; background: var(--line); }
+.pr-loopband { position: absolute; top: 9px; height: 8px; background: var(--accent-soft); border-radius: 2px; }
+.pr-played { position: absolute; left: 0; top: 11px; height: 4px; background: var(--accent); border-radius: 2px; pointer-events: none; }
+.pr-head { position: absolute; top: 6px; width: 3px; height: 14px; margin-left: -1.5px; background: var(--ink); border-radius: 2px; pointer-events: none; }
+.pr-mark { position: absolute; top: -2px; transform: translateX(-50%); pointer-events: none; }
+.pr-mark span { display: inline-block; font-family: var(--font-mono); font-size: 10px; font-weight: 700; color: #fff; background: var(--accent); border-radius: 4px; padding: 1px 4px; }
+.pr-mark--b span { background: var(--ink-soft); }
+.pr-times { display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: var(--text-xs); color: var(--ink-faint); margin-top: 8px; font-variant-numeric: tabular-nums; }
+
+.pr-transport { display: flex; align-items: center; justify-content: center; gap: 14px; margin-top: 14px; }
+.pr-ic { width: 44px; height: 44px; border: none; background: transparent; color: var(--ink-soft); border-radius: 12px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: background .12s, color .12s; }
+.pr-ic:hover { background: var(--surface-hover); color: var(--ink); }
+.pr-play { width: 60px; height: 60px; border-radius: 50%; border: none; background: var(--accent); color: var(--ink-on-accent); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: transform .12s, background .12s; }
+.pr-play:hover { background: var(--accent-hover); }
+.pr-play:active { transform: scale(.95); }
+
+.pr-block { margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--line); }
+.pr-block-h { display: flex; align-items: baseline; gap: 10px; margin-bottom: 12px; }
+.pr-loose { text-transform: none; letter-spacing: 0; font-weight: 500; color: var(--ink-faint); font-size: var(--text-xs); }
+.pr-ab { display: flex; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+.pr-abcol { display: flex; flex-direction: column; gap: 8px; }
+.pr-btn { border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: var(--radius-md); padding: 8px 16px; font-family: var(--font-sans); font-size: var(--text-sm); font-weight: 600; cursor: pointer; transition: color .12s, border-color .12s; }
+.pr-btn:hover:not(:disabled) { color: var(--accent); border-color: var(--accent-tint); }
+.pr-btn:disabled { opacity: .5; cursor: default; }
+.pr-btn--quiet { color: var(--ink-soft); }
+.pr-nudge { display: inline-flex; align-items: center; gap: 6px; }
+.pr-nudge button { border: 1px solid var(--line); background: transparent; color: var(--ink-soft); border-radius: 8px; padding: 3px 8px; font-family: var(--font-mono); font-size: 12px; cursor: pointer; }
+.pr-nudge button:hover:not(:disabled) { color: var(--accent); border-color: var(--accent-tint); }
+.pr-nudge button:disabled { opacity: .4; cursor: default; }
+.pr-nudge span { font-family: var(--font-mono); font-size: 13px; color: var(--ink); min-width: 54px; text-align: center; font-variant-numeric: tabular-nums; }
+.pr-looprow { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 14px; }
+.pr-mini { display: inline-flex; align-items: center; gap: 6px; }
+.pr-mini-lbl { font-size: var(--text-xs); color: var(--ink-faint); font-weight: 600; margin-right: 2px; }
+.pr-mini button { border: 1px solid var(--line); background: transparent; color: var(--ink-soft); border-radius: 8px; min-width: 32px; padding: 4px 9px; font-size: 13px; font-weight: 600; cursor: pointer; }
+.pr-mini button:hover:not(:disabled) { color: var(--accent); border-color: var(--accent-tint); }
+.pr-mini button:disabled { opacity: .4; cursor: default; }
+.pr-mini span { font-family: var(--font-mono); font-size: 12px; color: var(--ink-soft); min-width: 36px; text-align: center; }
+
+.pr-speed { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.pr-speed input[type=range] { flex: 1; min-width: 140px; accent-color: var(--accent); }
+.pr-presets { display: flex; gap: 6px; }
+.pr-preset { border: 1px solid var(--line); background: transparent; color: var(--ink-soft); border-radius: 8px; padding: 4px 10px; font-size: 13px; font-weight: 600; cursor: pointer; }
+.pr-preset.is-on { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
+
+.pr-savebar { display: flex; gap: 10px; align-items: center; margin-top: 20px; flex-wrap: wrap; }
+.pr-saverow { display: flex; gap: 8px; align-items: center; width: 100%; flex-wrap: wrap; }
+.pr-saverow > .fc-field { flex: 1; min-width: 180px; }
+.pr-link { border: none; background: none; color: var(--accent); font-family: var(--font-sans); font-size: var(--text-sm); font-weight: 600; cursor: pointer; padding: 0; }
+.pr-link:hover { text-decoration: underline; }
+
+.pr-saved { margin-top: 26px; }
+.pr-savedlist { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+.pr-savedrow { display: flex; align-items: center; gap: 8px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-md); }
+.pr-savedmain { flex: 1; min-width: 0; text-align: left; border: none; background: none; cursor: pointer; padding: 11px 14px; }
+.pr-savedname { display: block; font-weight: 600; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pr-savedsub { display: block; font-size: var(--text-xs); color: var(--ink-faint); margin-top: 2px; }
+.pr-savedx { border: none; background: none; color: var(--ink-faint); cursor: pointer; padding: 10px 12px; border-radius: 8px; }
+.pr-savedx:hover { color: var(--danger); }
+
+.pr-keys { margin-top: 26px; }
+.pr-keygrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 8px 16px; margin-top: 12px; }
+.pr-key { display: flex; align-items: center; gap: 8px; font-size: var(--text-sm); color: var(--ink-soft); }
+.pr-key kbd { font-family: var(--font-mono); font-size: 11px; background: var(--surface-sunken); border: 1px solid var(--line); border-radius: 5px; padding: 2px 6px; color: var(--ink); white-space: nowrap; }
+
 /* ---- Song view (teleprompter play-along) ---- */
 .sv {
   position: relative; display: flex; flex-direction: column; height: 100%; width: 100%;

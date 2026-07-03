@@ -84,3 +84,15 @@ export function loadPlaylistDeletions() {
   return stored && typeof stored === 'object' ? stored : {};
 }
 export function savePlaylistDeletions(d) { write('playlistDeletions', d); }
+
+// Saved practice loops: [{ id, name, kind, id/url/name, a, b, speed, preRoll, createdAt, updatedAt }]
+export function loadLoops() {
+  const stored = read('loops', null);
+  return Array.isArray(stored) ? stored : [];
+}
+export function saveLoops(v) { write('loops', v); }
+export function loadLoopDeletions() {
+  const stored = read('loopDeletions', null);
+  return stored && typeof stored === 'object' ? stored : {};
+}
+export function saveLoopDeletions(d) { write('loopDeletions', d); }
