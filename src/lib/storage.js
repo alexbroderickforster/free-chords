@@ -66,6 +66,10 @@ export function saveSyncOptIn(v) { write('syncOptIn', !!v); }
 export function loadKeyPing() { return read('keyPing', true) === true; }
 export function saveKeyPing(v) { write('keyPing', !!v); }
 
+// Tuner in-tune tolerance preset (device-local): 'strict' | 'standard' | 'relaxed'.
+export function loadTunerTol() { const v = read('tunerTol', 'standard'); return ['strict', 'standard', 'relaxed'].includes(v) ? v : 'standard'; }
+export function saveTunerTol(v) { write('tunerTol', v); }
+
 // Claude API key for image import. Device-local only — deliberately NOT part of
 // the Drive-sync payload (it's a secret and must never leave this device).
 export function loadApiKey() { return read('apiKey', '') || ''; }

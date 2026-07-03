@@ -9,6 +9,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { SegmentedControl, Icon } from '../components/index.js';
 import { detectPitch, foldToward, nearestString, cents, noteInfo } from '../lib/pitch.js';
+import { loadTunerTol, saveTunerTol } from '../lib/storage.js';
 
 const TN_NOTES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
@@ -36,12 +37,24 @@ const DET = {
 const OWN_BAND = 250;   // cents each string "owns" for auto-detect (strings are ~400–500¢ apart)
 const CLARITY_MIN = 0.85;
 
+// How wide the "in tune" / "close" bands are, in cents. Perfect tuning never
+// holds, so the default is forgiving; Strict is for careful/studio tuning.
+const TOLERANCES = {
+  strict: { label: 'Strict', in: 4, close: 10 },
+  standard: { label: 'Standard', in: 10, close: 20 },
+  relaxed: { label: 'Relaxed', in: 16, close: 30 },
+};
+
 export function TunerView() {
   const [live, setLive] = useState(false);
   const [instrument, setInstrument] = useState('guitar'); // 'guitar' | 'bass'
   const [mode, setMode] = useState('tuning');             // 'tuning' | 'chromatic'
   const [manualIdx, setManualIdx] = useState(-1);         // -1 = auto-detect which string
+  const [tolKey, setTolKey] = useState(() => loadTunerTol()); // 'strict' | 'standard' | 'relaxed'
   const strings = TUNINGS[instrument].info;
+  // Read the live tolerance from a ref so the rAF loop never uses a stale value.
+  const tolRef = useRef(TOLERANCES[tolKey]); tolRef.current = TOLERANCES[tolKey] || TOLERANCES.standard;
+  const changeTol = (k) => { setTolKey(k); saveTunerTol(k); };
 
   const root = useRef(null);
   const ac = useRef(null), stream = useRef(null), analyser = useRef(null), buf = useRef(null), chain = useRef([]);
@@ -101,7 +114,8 @@ export function TunerView() {
   const setDot = (c, extraStatus) => {
     const pos = Math.max(2, Math.min(98, 50 + (c / 50) * 50));
     const dot = $('.tn-dot'); dot.style.left = pos + '%';
-    const inTune = Math.abs(c) <= 5, close = Math.abs(c) <= 15;
+    const tol = tolRef.current;
+    const inTune = Math.abs(c) <= tol.in, close = Math.abs(c) <= tol.close;
     dot.className = 'tn-dot' + (inTune ? ' intune' : close ? ' close' : ' off');
     $('.tn-meter').classList.toggle('intune', inTune);
     $('.tn-cents').textContent = (c > 0 ? '+' : '') + Math.round(c) + ' cents';
@@ -289,7 +303,9 @@ export function TunerView() {
 
       <div className="tn-meter">
         <div className="tn-scale">
-          <div className="tn-zone"></div>
+          {/* Green band = the "in tune" window. The meter maps 1 cent → 1%, so
+              the band spans ±(tolerance) cents around centre. */}
+          <div className="tn-zone" style={{ left: (50 - TOLERANCES[tolKey].in) + '%', right: (50 - TOLERANCES[tolKey].in) + '%' }}></div>
           <div className="tn-mline"></div>
           <div className="tn-tick" style={{ left: '10%' }}></div>
           <div className="tn-tick" style={{ left: '30%' }}></div>
@@ -300,6 +316,14 @@ export function TunerView() {
         </div>
         <div className="tn-ends"><span>♭ flat</span><span>in tune</span><span>sharp ♯</span></div>
         <div className="tn-cents">—</div>
+      </div>
+
+      <div className="tn-tol">
+        <span className="tn-tol-lbl">In-tune window</span>
+        <SegmentedControl
+          options={Object.entries(TOLERANCES).map(([k, t]) => ({ value: k, label: t.label }))}
+          value={tolKey} onChange={changeTol} />
+        <span className="tn-tol-cap">Within ±{TOLERANCES[tolKey].in}¢ counts as in tune — perfect tuning never lasts.</span>
       </div>
 
       <div className="tn-strings" data-count={strings.length}>
