@@ -173,15 +173,15 @@ export function App() {
   // kind: 'html' → download an offline web page that plays through; 'pdf' → open
   // a print-styled page and invoke the print dialog (Save as PDF).
   const bpmFor = (s) => { const p = prefsFor(s.id); return { useBpm: p.useBpm, bpm: p.bpm, speed: p.speed }; };
-  const exportDoc = (list, name, kind) => {
+  const exportDoc = (list, name, kind, opts) => {
     const songsOut = (list || []).filter(Boolean);
     if (!songsOut.length) { setToast('Nothing to export yet'); return; }
-    const html = renderSongbookHtml(songsOut, { title: name, mode: kind === 'pdf' ? 'print' : 'player', bpmFor });
+    const html = renderSongbookHtml(songsOut, { title: name, mode: kind === 'pdf' ? 'print' : 'player', bpmFor, single: !!(opts && opts.single) });
     if (kind === 'pdf') { if (!openDoc(html)) setToast('Allow pop-ups to save as PDF'); }
     else downloadHtml(`${slugify(name)}.html`, html);
   };
   const exportPlaylist = (pl, kind) => { if (pl) exportDoc(resolvePlaylistSongs(pl), pl.name || 'Playlist', kind); };
-  const exportSong = (s, kind) => { if (s) exportDoc([s], s.title || 'Song', kind); };
+  const exportSong = (s, kind) => { if (s) exportDoc([s], s.title || 'Song', kind, { single: true }); };
 
   const createPlaylist = (name) => {
     const now = Date.now();

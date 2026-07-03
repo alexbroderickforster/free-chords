@@ -36,15 +36,18 @@ function metaLine(song, t) {
   return bits.join(' &middot; ');
 }
 
-function renderSong(song, t) {
+function renderSong(song, t, withHead) {
   t = t || {};
   const data = `data-usebpm="${t.useBpm ? 1 : 0}" data-bpm="${Number(t.bpm) || 90}" data-speed="${Number(t.speed) || 4}"`;
-  return `<section class="song" ${data}>
-  <div class="song-head">
+  // A single-song export puts the title in the document header, so skip the
+  // per-song heading to avoid printing the title twice. The title still rides
+  // on data-title for the player bar.
+  const head = withHead === false ? '' : `<div class="song-head">
     <h2 class="song-title">${esc(song.title || 'Untitled')}</h2>
     <div class="song-meta">${metaLine(song, t)}</div>
-  </div>
-  <div class="sheet">${renderSheet(song)}</div>
+  </div>`;
+  return `<section class="song" data-title="${esc(song.title || 'Untitled')}" ${data}>
+  ${head}<div class="sheet">${renderSheet(song)}</div>
   <div class="song-end">— end —</div>
 </section>`;
 }
@@ -111,7 +114,7 @@ const PLAYER_JS = `
   var playing=false,raf=0,last=0,acc=0,rowPx=0;
   function measure(){var seg=document.querySelector('.seg');if(seg){var h=seg.getBoundingClientRect().height;if(h>0)rowPx=h;}if(!rowPx)rowPx=51;}
   function current(){for(var i=0;i<songs.length;i++){if(songs[i].getBoundingClientRect().bottom>100)return i;}return songs.length-1;}
-  function label(){var i=current(),s=songs[i];nowT.textContent=s?s.querySelector('.song-title').textContent:'';var nx=songs[i+1];nowN.textContent=nx?('Up next: '+nx.querySelector('.song-title').textContent):(playing?'Last song':'Tap play to roll through');return i;}
+  function label(){var i=current(),s=songs[i];nowT.textContent=s?(s.getAttribute('data-title')||''):'';var nx=songs[i+1];nowN.textContent=nx?('Up next: '+(nx.getAttribute('data-title')||'')):(playing?'Last song':'Tap play to roll through');return i;}
   function speed(i){var el=songs[i];if(!el)return 40;if(el.getAttribute('data-usebpm')==='1'){var b=Math.max(30,Math.min(300,parseInt(el.getAttribute('data-bpm'),10)||90));return (b/4)*rowPx/60;}var sp=parseInt(el.getAttribute('data-speed'),10)||4;return sp*sp*0.7+3;}
   function atEnd(){return (window.scrollY+window.innerHeight)>=(document.documentElement.scrollHeight-2);}
   function tick(now){if(!last)last=now;var dt=now-last;last=now;var i=label();acc+=speed(i)*dt/1000;if(acc>=1){var whole=Math.floor(acc);acc-=whole;window.scrollBy(0,whole);if(atEnd()){stop();return;}}raf=requestAnimationFrame(tick);}
@@ -131,10 +134,13 @@ export function renderSongbookHtml(songs, opts) {
   const title = opts.title || 'FreeChords';
   const bpmFor = typeof opts.bpmFor === 'function' ? opts.bpmFor : () => ({});
   const list = Array.isArray(songs) ? songs : [];
-  const body = list.map((s) => renderSong(s, bpmFor(s))).join('\n');
+  const single = !!opts.single && list.length === 1;
+  const body = list.map((s) => renderSong(s, bpmFor(s), !single)).join('\n');
   const count = list.length;
   const css = BASE_CSS + (mode === 'print' ? PRINT_CSS : PLAYER_CSS);
-  const head = `<header class="doc-head"><h1 class="doc-title">${esc(title)}</h1><div class="doc-sub">${count} song${count === 1 ? '' : 's'} &middot; FreeChords</div></header>`;
+  const head = single
+    ? `<header class="doc-head"><h1 class="doc-title">${esc(list[0].title || 'Untitled')}</h1><div class="doc-sub">${metaLine(list[0], bpmFor(list[0])) || 'FreeChords'}</div></header>`
+    : `<header class="doc-head"><h1 class="doc-title">${esc(title)}</h1><div class="doc-sub">${count} song${count === 1 ? '' : 's'} &middot; FreeChords</div></header>`;
   const printbar = mode === 'print'
     ? `<div class="printbar"><button onclick="window.print()">Print / Save as PDF</button><span>Use your browser's print dialog and choose “Save as PDF”.</span></div>`
     : '';
