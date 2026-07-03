@@ -10,6 +10,7 @@ import { AddImport } from './screens/AddImport.jsx';
 import { Practice } from './screens/Practice.jsx';
 import { TunerView } from './screens/TunerView.jsx';
 import { TuningLab } from './screens/TuningLab.jsx';
+import { Training } from './screens/Training.jsx';
 import { SONGS, ALL_TAGS } from './data/songs.js';
 import { nextStatus } from './lib/music.js';
 import { Settings, SyncBadge } from './screens/Settings.jsx';
@@ -444,6 +445,7 @@ export function App() {
     { value: 'songs', label: 'Songs', icon: <Icon n="library" s={22} /> },
     { value: 'playlists', label: 'Playlists', icon: <Icon n="list-music" s={22} /> },
     { value: 'practice', label: 'Practice', icon: <Icon n="repeat" s={22} /> },
+    { value: 'training', label: 'Training', icon: <Icon n="graduation-cap" s={22} /> },
     { value: 'tuner', label: 'Tuner', icon: <Icon n="audio-lines" s={22} /> },
     { value: 'settings', label: 'Settings', icon: <Icon n="settings" s={22} /> },
   ];
@@ -489,6 +491,7 @@ export function App() {
         {tab === 'playlists' && <Playlists playlists={playlists} albums={albumOptions} resolvePlaylistSongs={resolvePlaylistSongs} onOpenSong={openSong} onPlayPlaylist={startPlaylist} onCreatePlaylist={createPlaylist} onCreateAlbumPlaylist={createAlbumPlaylist} onRenamePlaylist={renamePlaylist} onDeletePlaylist={deletePlaylist} onRemoveSong={removeSongFromPlaylist} onMoveSong={movePlaylistSong} onExport={exportPlaylist} />}
         {tab === 'add' && <AddImport onBack={() => setTab('songs')} knownTags={knownTags} artistOptions={artistOptions} albumOptions={albumOptions} apiKey={apiKey} onSaveApiKey={setApiKey} onSave={addSong} />}
         {tab === 'practice' && <Practice loops={loops} onSaveLoop={saveLoop} onDeleteLoop={deleteLoop} initialLoop={initialLoop} />}
+        {tab === 'training' && <Training />}
         {tab === 'tuner' && <TunerView />}
         {tab === 'tuninglab' && <TuningLab onBack={() => setTab('settings')} />}
         {tab === 'settings' && <Settings {...backupProps} dark={dark} onToggleTheme={toggleTheme} onOpenLab={() => setTab('tuninglab')} />}

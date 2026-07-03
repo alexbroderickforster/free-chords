@@ -75,6 +75,10 @@ export function saveTunerTol(v) { write('tunerTol', v); }
 export function loadTuningMonitor() { return read('tuningMonitor', false) === true; }
 export function saveTuningMonitor(v) { write('tuningMonitor', !!v); }
 
+// Ear-training (interval trainer) settings — device-local.
+export function loadTraining() { const d = read('training', null); return d && typeof d === 'object' ? d : null; }
+export function saveTraining(v) { write('training', v); }
+
 // Claude API key for image import. Device-local only — deliberately NOT part of
 // the Drive-sync payload (it's a secret and must never leave this device).
 export function loadApiKey() { return read('apiKey', '') || ''; }
