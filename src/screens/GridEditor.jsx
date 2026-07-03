@@ -6,9 +6,10 @@
 // lib/gridedit.js for the model ⇄ ChordPro round-trip.
 import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { Icon } from '../components/index.js';
-import { gridFromChordPro, gridToChordPro, shiftChords, usedChords, newId, DEFAULT_CHORDS } from '../lib/gridedit.js';
+import { gridFromChordPro, gridToChordPro, shiftChords, usedChords, newId, rowToLine, parseChordProLine, DEFAULT_CHORDS } from '../lib/gridedit.js';
 
-const CHIP_PAD = 5; // .ge-chip left padding — subtract it so the label sits over the character
+const CHIP_PAD = 5;  // .ge-chip left padding — subtract it so the label sits over the character
+const MAX_COL = 120; // furthest column a chord can be placed at (chords past the text pad with spaces)
 
 export function GridEditor({ initialValue = '', onChange }) {
   const [lines, setLines] = useState(() => gridFromChordPro(initialValue));
@@ -107,6 +108,31 @@ export function GridEditor({ initialValue = '', onChange }) {
     } else if (e.key === 'ArrowUp' && li > 0) { e.preventDefault(); pending.current = { li: li - 1, caret: el.selectionStart }; setLines([...lines]); }
     else if (e.key === 'ArrowDown' && li < lines.length - 1) { e.preventDefault(); pending.current = { li: li + 1, caret: el.selectionStart }; setLines([...lines]); }
   };
+  // Paste a whole block of lyrics (or ChordPro) into a line: split it into lines
+  // instead of jamming it onto one. First/last pasted rows merge at the cursor.
+  const onPaste = (li) => (e) => {
+    const data = e.clipboardData || window.clipboardData;
+    const text = data ? data.getData('text') : '';
+    if (!text || !/[\r\n]/.test(text)) return; // single line → let the default paste happen
+    e.preventDefault();
+    const el = e.target, pos = el.selectionStart, ln = lines[li];
+    const before = ln.text.slice(0, pos), after = ln.text.slice(pos);
+    const beforeChords = {}, afterChords = {};
+    Object.keys(ln.chords).forEach((k) => { const n = +k; if (n < pos) beforeChords[n] = ln.chords[k]; else afterChords[n - pos] = ln.chords[k]; });
+    const rows = text.replace(/\r\n?/g, '\n').split('\n');
+    const out = [];
+    const f = parseChordProLine(rows[0]);      // first row joins onto `before`
+    const fc = { ...beforeChords };
+    Object.keys(f.chords).forEach((k) => { fc[+k + before.length] = f.chords[k]; });
+    out.push({ id: newId(), type: 'lyric', text: before + f.text, chords: fc });
+    for (let i = 1; i < rows.length - 1; i++) out.push(rowToLine(rows[i])); // middle rows classified (lyrics/sections)
+    const l = parseChordProLine(rows[rows.length - 1]); // last row joins onto `after`
+    const lc = { ...l.chords };
+    Object.keys(afterChords).forEach((k) => { lc[+k + l.text.length] = afterChords[k]; });
+    out.push({ id: newId(), type: 'lyric', text: l.text + after, chords: lc });
+    emit([...lines.slice(0, li), ...out, ...lines.slice(li + 1)]);
+    pending.current = { li: li + out.length - 1, caret: l.text.length };
+  };
 
   // ---- chord edits ----
   const openPicker = (li, ci) => { setPfilter(''); setPicker({ li, ci }); };
@@ -114,8 +140,7 @@ export function GridEditor({ initialValue = '', onChange }) {
     if (suppressClick.current) { suppressClick.current = false; return; } // a drag just ended
     if (e.target.closest('.ge-chip') || e.target.closest('.ge-pop')) return;
     const rect = e.currentTarget.getBoundingClientRect();
-    const len = linesRef.current[li].text.length; // clamp so a chord can't land past the line's end
-    openPicker(li, Math.max(0, Math.min(len, Math.round((e.clientX - rect.left) / chwRef.current))));
+    openPicker(li, Math.max(0, Math.min(MAX_COL, Math.round((e.clientX - rect.left) / chwRef.current))));
   };
   const setChord = (name) => {
     const n = (name || '').trim(); if (!picker || !n) return;
@@ -148,8 +173,7 @@ export function GridEditor({ initialValue = '', onChange }) {
     const move = (ev) => {
       if (!info.moved && Math.abs(ev.clientX - info.startX) < 4) return;
       info.moved = true;
-      const len = linesRef.current[li].text.length;
-      const nc = Math.max(0, Math.min(len, Math.round((ev.clientX - laneRect.left) / chwRef.current)));
+      const nc = Math.max(0, Math.min(MAX_COL, Math.round((ev.clientX - laneRect.left) / chwRef.current)));
       info.curCi = nc;
       setDrag({ li, fromCi: ci, curCi: nc });
     };
@@ -219,8 +243,8 @@ export function GridEditor({ initialValue = '', onChange }) {
                 {picker && picker.li === li && renderPicker(li, picker.ci)}
               </div>
               <input ref={(el) => { inputs.current[li] = el; }} className="ge-mono ge-lyric" value={ln.text} spellCheck={false}
-                placeholder={li === 0 ? 'Type a line of lyrics…' : ''}
-                onChange={(e) => setLineText(li, e.target.value)} onKeyDown={onKeyDown(li)} />
+                placeholder={li === 0 ? 'Type or paste lyrics…' : ''}
+                onChange={(e) => setLineText(li, e.target.value)} onKeyDown={onKeyDown(li)} onPaste={onPaste(li)} />
             </div>
           ) : ln.type === 'section' ? (
             <div className="ge-body ge-sectionrow">

@@ -30,16 +30,19 @@ export function parseChordProLine(s) {
   return { text, chords };
 }
 
+// One raw ChordPro row → a grid line object (section header, unknown directive, or
+// chords-over-lyric line). Exported so bulk paste can format a dump the same way.
+export function rowToLine(row) {
+  const t = row.trim();
+  const m = t.match(SECTION_RE);
+  if (m) return { id: newId(), type: 'section', text: m[1] };
+  if (t.startsWith('{') && t.endsWith('}')) return { id: newId(), type: 'raw', text: row }; // preserve unknown directives verbatim
+  const { text, chords } = parseChordProLine(row);
+  return { id: newId(), type: 'lyric', text, chords };
+}
+
 export function gridFromChordPro(src) {
-  const rows = String(src || '').replace(/\r\n?/g, '\n').split('\n');
-  const lines = rows.map((row) => {
-    const t = row.trim();
-    const m = t.match(SECTION_RE);
-    if (m) return { id: newId(), type: 'section', text: m[1] };
-    if (t.startsWith('{') && t.endsWith('}')) return { id: newId(), type: 'raw', text: row }; // preserve unknown directives verbatim
-    const { text, chords } = parseChordProLine(row);
-    return { id: newId(), type: 'lyric', text, chords };
-  });
+  const lines = String(src || '').replace(/\r\n?/g, '\n').split('\n').map(rowToLine);
   if (!lines.length) lines.push({ id: newId(), type: 'lyric', text: '', chords: {} });
   return lines;
 }
@@ -48,8 +51,14 @@ export function lineToChordPro(ln) {
   if (ln.type === 'section') return `{c: ${ln.text}}`;
   if (ln.type === 'raw') return ln.text;
   let out = ln.text || '';
-  const idxs = Object.keys(ln.chords || {}).map(Number).sort((a, b) => b - a); // right-to-left keeps offsets valid
-  for (const i of idxs) { const p = Math.min(i, out.length); out = out.slice(0, p) + '[' + ln.chords[i] + ']' + out.slice(p); }
+  const keys = Object.keys(ln.chords || {}).map(Number);
+  if (!keys.length) return out;
+  // Pad with spaces so a chord past the last character (an intro/instrumental row,
+  // or a chord ringing after the last word) has a column to sit on.
+  const maxIdx = Math.max(...keys);
+  if (maxIdx > out.length) out += ' '.repeat(maxIdx - out.length);
+  const idxs = keys.sort((a, b) => b - a); // right-to-left keeps offsets valid
+  for (const i of idxs) out = out.slice(0, i) + '[' + ln.chords[i] + ']' + out.slice(i);
   return out;
 }
 
