@@ -61,7 +61,7 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
   const [recTime, setRecTime] = useState(0);          // elapsed seconds while recording
   const [recTake, setRecTake] = useState(null);       // { url, blob, ext, seconds } finished take
   const [recError, setRecError] = useState('');
-  const recRef = useRef(null), recStream = useRef(null), recChunks = useRef([]), recTimer = useRef(null), recStart = useRef(0);
+  const recRef = useRef(null), recStream = useRef(null), recChunks = useRef([]), recTimer = useRef(null), recStart = useRef(0), recGen = useRef(0);
   // The scroll RAF loop must call the CURRENT playlist callbacks without being
   // in its deps (that would restart the loop and stutter). Read them via a ref.
   const latest = useRef({});
@@ -156,11 +156,13 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
   const startRecording = async () => {
     if (recording) return;
     setRecError('');
-    if (recTake) { URL.revokeObjectURL(recTake.url); setRecTake(null); } // drop a prior take
+    if (recTake) setRecTake(null); // drop a prior take (its URL is freed by the [recTake] cleanup effect)
     const mime = recMime();
     if (mime == null) { setRecError('Recording isn’t supported in this browser.'); return; }
+    const g = ++recGen.current; // claim this attempt — a stale resolve after song-change/unmount is dropped
     try {
       const ms = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
+      if (g !== recGen.current) { ms.getTracks().forEach((t) => t.stop()); return; } // aborted while acquiring — kill the late stream, touch no state
       recStream.current = ms;
       const ext = mime.includes('webm') ? 'webm' : mime.includes('mp4') ? 'm4a' : mime.includes('ogg') ? 'ogg' : 'webm';
       const rec = new MediaRecorder(ms, mime ? { mimeType: mime } : undefined);
@@ -181,11 +183,13 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
       const sc = scRef.current; if (sc) { sc.scrollTop = 0; endedRef.current = false; }
       setPlaying(true);
     } catch {
+      if (g !== recGen.current) return; // stale rejection — stay silent
       setRecError('Mic access is blocked — allow it to record a scratch take.');
       if (recStream.current) { recStream.current.getTracks().forEach((t) => t.stop()); recStream.current = null; }
     }
   };
   const stopRecording = () => {
+    recGen.current++; // invalidate any still-pending start
     if (recTimer.current) { clearInterval(recTimer.current); recTimer.current = null; }
     setRecording(false); setPlaying(false);
     try { if (recRef.current && recRef.current.state !== 'inactive') recRef.current.stop(); } catch { /* ignore */ }
@@ -211,10 +215,11 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
     } catch { /* fall through to download */ }
     downloadTake();
   };
-  const discardTake = () => { if (recTake) URL.revokeObjectURL(recTake.url); setRecTake(null); setRecError(''); };
+  const discardTake = () => { setRecTake(null); setRecError(''); };
   const canShareTake = typeof navigator !== 'undefined' && !!navigator.canShare;
   // Tear down an in-progress recording WITHOUT producing a take (song change / unmount).
   const abortRecording = () => {
+    recGen.current++; // invalidate any getUserMedia still in flight (refs may still be null)
     if (recTimer.current) { clearInterval(recTimer.current); recTimer.current = null; }
     if (recRef.current) { recRef.current.onstop = null; try { if (recRef.current.state !== 'inactive') recRef.current.stop(); } catch { /* ignore */ } recRef.current = null; }
     if (recStream.current) { recStream.current.getTracks().forEach((t) => t.stop()); recStream.current = null; }
@@ -285,7 +290,7 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
     setLeaving(false); // the new song fades in fresh
     spreads.current = []; setTuningNudge(false); // fresh tuning read per song
     abortRecording(); setRecording(false); setRecError(''); setRecTime(0);
-    setRecTake((prev) => { if (prev) URL.revokeObjectURL(prev.url); return null; }); // fresh recorder per song
+    setRecTake(null); // fresh recorder per song (URL freed by the [recTake] cleanup effect)
     setTagEditing(false); setTagDraft('');
     setCapo(song.capo || 0);
     setTranspose(prefs.transpose ?? 0);
@@ -325,10 +330,10 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
   // you're just reading the sheet). Accumulation persists across pause/resume;
   // it's reset per song above.
   useEffect(() => {
-    if (tuningMonitor && playing) startTuningMic();
+    if (tuningMonitor && playing && !recording) startTuningMic(); // don't hold two mic streams during a take
     else stopTuningMic();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tuningMonitor, playing, song.id]);
+  }, [tuningMonitor, playing, recording, song.id]);
 
   // Cancel any running countdown / metronome / mic when the view unmounts.
   useEffect(() => () => {
