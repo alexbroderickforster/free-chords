@@ -13,7 +13,7 @@ import { TuningLab } from './screens/TuningLab.jsx';
 import { SONGS, ALL_TAGS } from './data/songs.js';
 import { nextStatus } from './lib/music.js';
 import { Settings, SyncBadge } from './screens/Settings.jsx';
-import { loadSongs, saveSongs, loadTags, saveTags, loadTheme, saveTheme, loadThemeAt, saveThemeAt, loadPrefs, savePrefs, loadDeletions, saveDeletions, loadSyncOptIn, saveSyncOptIn, loadPlaylists, savePlaylists, loadPlaylistDeletions, savePlaylistDeletions, loadKeyPing, saveKeyPing, loadApiKey, saveApiKey, loadLoops, saveLoops, loadLoopDeletions, saveLoopDeletions } from './lib/storage.js';
+import { loadSongs, saveSongs, loadTags, saveTags, loadTheme, saveTheme, loadThemeAt, saveThemeAt, loadPrefs, savePrefs, loadDeletions, saveDeletions, loadSyncOptIn, saveSyncOptIn, loadPlaylists, savePlaylists, loadPlaylistDeletions, savePlaylistDeletions, loadKeyPing, saveKeyPing, loadApiKey, saveApiKey, loadLoops, saveLoops, loadLoopDeletions, saveLoopDeletions, loadTuningMonitor, saveTuningMonitor } from './lib/storage.js';
 import { exportSongbook, parseBackup } from './lib/backup.js';
 import { renderSongbookHtml, downloadHtml, openDoc } from './lib/songbookExport.js';
 import { isStandalone, isIos } from './lib/offline.js';
@@ -65,6 +65,7 @@ export function App() {
   const [addToPlaylistSong, setAddToPlaylistSong] = useState(null);
   const [playSession, setPlaySession] = useState(null); // { playlistId, index } — ephemeral, per-device
   const [keyPing, setKeyPing] = useState(() => loadKeyPing());
+  const [tuningMonitor, setTuningMonitor] = useState(() => loadTuningMonitor());
   const [apiKey, setApiKey] = useState(() => loadApiKey());
   const [canInstall, setCanInstall] = useState(false);
   const installEvt = useRef(null);
@@ -90,6 +91,7 @@ export function App() {
   useEffect(() => { saveLoops(loops); }, [loops]);
   useEffect(() => { saveLoopDeletions(loopDeletions); }, [loopDeletions]);
   useEffect(() => { saveKeyPing(keyPing); }, [keyPing]);
+  useEffect(() => { saveTuningMonitor(tuningMonitor); }, [tuningMonitor]);
   useEffect(() => { saveApiKey(apiKey); }, [apiKey]);
 
   // Capture the browser's install prompt so "Add to home screen" (Chrome/Android)
@@ -282,6 +284,8 @@ export function App() {
     if (prev >= 0) { setPlaySession((s) => ({ ...s, index: prev })); setSong(list[prev]); }
   };
   const exitPlaylist = () => setPlaySession(null);
+  // Jump from the song view straight to the Tuner (used by the out-of-tune nudge).
+  const openTuner = () => { setPlaySession(null); setSong(null); setEditing(false); setTab('tuner'); };
 
   // ---- Google Drive sync (opt-in, offline-first) ----
   const buildDoc = () => ({
@@ -478,7 +482,7 @@ export function App() {
   const screen = (song && editing)
     ? <SongEdit song={song} knownTags={knownTags} artistOptions={artistOptions} albumOptions={albumOptions} onSave={saveEdit} onCancel={() => setEditing(false)} onDelete={deleteSong} />
     : song
-    ? <SongView song={song} onBack={closeSong} onArtist={goArtist} dark={dark} onToggleTheme={toggleTheme} focusMode={focus} onToggleFocus={() => setFocus((f) => !f)} onToggleStar={toggleStar} onCycleStatus={cycleStatus} onUpdateTags={updateTags} onEdit={() => setEditing(true)} prefs={prefsFor(song.id)} onSavePref={(patch) => savePref(song.id, patch)} onCapo={(v) => updateSong(song.id, { capo: v })} onAddToPlaylist={setAddToPlaylistSong} playlist={svPlaylist} onPlaylistNext={playlistNext} onPlaylistPrev={playlistPrev} onPlaylistExit={exitPlaylist} keyPing={keyPing} onToggleKeyPing={() => setKeyPing((v) => !v)} onExport={exportSong} />
+    ? <SongView song={song} onBack={closeSong} onArtist={goArtist} dark={dark} onToggleTheme={toggleTheme} focusMode={focus} onToggleFocus={() => setFocus((f) => !f)} onToggleStar={toggleStar} onCycleStatus={cycleStatus} onUpdateTags={updateTags} onEdit={() => setEditing(true)} prefs={prefsFor(song.id)} onSavePref={(patch) => savePref(song.id, patch)} onCapo={(v) => updateSong(song.id, { capo: v })} onAddToPlaylist={setAddToPlaylistSong} playlist={svPlaylist} onPlaylistNext={playlistNext} onPlaylistPrev={playlistPrev} onPlaylistExit={exitPlaylist} keyPing={keyPing} onToggleKeyPing={() => setKeyPing((v) => !v)} onExport={exportSong} tuningMonitor={tuningMonitor} onSetTuningMonitor={setTuningMonitor} onOpenTuner={openTuner} />
     : (
       <main className="app-body">
         {tab === 'songs' && <Library songs={songs} tags={knownTags} onOpen={openSong} onAdd={() => setTab('add')} artistFilter={artistFilter} onClearArtist={() => setArtistFilter(null)} onArtist={goArtist} onToggleStar={toggleStar} onCycleStatus={cycleStatus} onAddToPlaylist={setAddToPlaylistSong} />}

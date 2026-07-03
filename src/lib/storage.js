@@ -70,6 +70,11 @@ export function saveKeyPing(v) { write('keyPing', !!v); }
 export function loadTunerTol() { const v = read('tunerTol', 'standard'); return ['strict', 'standard', 'relaxed'].includes(v) ? v : 'standard'; }
 export function saveTunerTol(v) { write('tunerTol', v); }
 
+// "Listen while I play and flag an out-of-tune guitar" toggle (device-local,
+// default off — it's a mic, so strictly opt-in).
+export function loadTuningMonitor() { return read('tuningMonitor', false) === true; }
+export function saveTuningMonitor(v) { write('tuningMonitor', !!v); }
+
 // Claude API key for image import. Device-local only — deliberately NOT part of
 // the Drive-sync payload (it's a secret and must never leave this device).
 export function loadApiKey() { return read('apiKey', '') || ''; }

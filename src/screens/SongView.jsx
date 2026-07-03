@@ -5,6 +5,7 @@ import { Stepper, prettyKey, Icon } from '../components/index.js';
 import { STATUS, keyToPing } from '../lib/music.js';
 import { chordSVG, preloadChords } from '../lib/chords.js';
 import { toSections, transposeChordName } from '../lib/chordpro.js';
+import { dbToMag, analyzeTuning } from '../lib/tuning.js';
 
 // One lyric line: chord-over-syllable columns (chords already transposed).
 function ChordLine({ segments }) {
@@ -22,7 +23,16 @@ function ChordLine({ segments }) {
 
 const COUNTDOWN_SECS = 5; // pause between songs in a playlist run
 
-export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMode, onToggleFocus, onToggleStar, onCycleStatus, onUpdateTags, onEdit, prefs = {}, onSavePref, onCapo, onAddToPlaylist, playlist = null, onPlaylistNext, onPlaylistPrev, onPlaylistExit, keyPing = false, onToggleKeyPing, onExport }) {
+// Background tuning-health monitor (opt-in mic). While a song plays we sample the
+// spectrum and measure how tightly it snaps to the note grid (see lib/tuning.js);
+// the median "spread" over the song decides whether to nudge "tune up" at the end.
+const TUNE_FFT = 32768;
+const TUNE_OPTS = { minHz: 70, maxHz: 1400, maxPeaks: 24, relFloor: 0.06 };
+const TUNE_ENERGY_FLOOR = 0.02; // below this, treat the frame as "not playing"
+const TUNE_MIN_SAMPLES = 12;    // ~2s of real playing before we're willing to judge
+const TUNE_NUDGE_SPREAD = 18;   // median cents-spread that counts as out of tune
+
+export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMode, onToggleFocus, onToggleStar, onCycleStatus, onUpdateTags, onEdit, prefs = {}, onSavePref, onCapo, onAddToPlaylist, playlist = null, onPlaylistNext, onPlaylistPrev, onPlaylistExit, keyPing = false, onToggleKeyPing, onExport, tuningMonitor = false, onSetTuningMonitor, onOpenTuner }) {
   const [transpose, setTranspose] = useState(prefs.transpose ?? 0);
   const [capo, setCapo] = useState(song.capo || 0);
   const [fontSize, setFontSize] = useState(prefs.fontSize ?? 28);
@@ -41,6 +51,11 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
   // Metronome — Web Audio clicks scheduled at the song's BPM (accent every 4th).
   const [metronome, setMetronome] = useState(false);
   const actx = useRef(null), schedRef = useRef(null), nextNoteRef = useRef(0), beatRef = useRef(0), metroBpmRef = useRef(90);
+  // Background tuning monitor: mic stream/analyser + per-song spread accumulator.
+  const [tuningNudge, setTuningNudge] = useState(false); // "sounds out of tune" flagged for this song
+  const [micDenied, setMicDenied] = useState(false);
+  const micStream = useRef(null), micAn = useRef(null), micDb = useRef(null), micMag = useRef(null), micTimer = useRef(null), micGen = useRef(0);
+  const spreads = useRef([]); // per-frame cents-spread readings while playing
   // The scroll RAF loop must call the CURRENT playlist callbacks without being
   // in its deps (that would restart the loop and stutter). Read them via a ref.
   const latest = useRef({});
@@ -54,12 +69,23 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
       setCountdown((c) => (typeof c !== 'number' ? c : c <= 1 ? 0 : c - 1));
     }, 1000);
   };
+  // Verdict from the tuning samples gathered while this song played: out of tune
+  // only when we have enough samples of real playing AND their median spread is
+  // clearly high (median resists the odd bend/vibrato frame).
+  const evalTuning = () => {
+    const arr = spreads.current;
+    if (arr.length < TUNE_MIN_SAMPLES) return false;
+    const sorted = [...arr].sort((a, b) => a - b);
+    return sorted[Math.floor(sorted.length / 2)] >= TUNE_NUDGE_SPREAD;
+  };
+
   // Auto-scroll hit the end of a song. In a playlist, roll into the next one
   // after a short countdown (or finish on the last song).
   const reachedBottom = () => {
     if (endedRef.current) return; // fire once per pass
     endedRef.current = true;
     setPlaying(false);
+    if (evalTuning()) setTuningNudge(true); // flag before the countdown / end shows
     const pl = latest.current.playlist;
     if (!pl) return;
     if (!pl.isLast) { setCountdown(COUNTDOWN_SECS); startCountdownTick(); maybeKeyPing(); }
@@ -72,6 +98,46 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
     if (actx.current.resume) actx.current.resume();
     return actx.current;
   };
+
+  // ---- Background tuning monitor (opt-in mic) ----
+  const sampleTuning = () => {
+    const an = micAn.current, ctx = actx.current; if (!an || !ctx) return;
+    an.getFloatFrequencyData(micDb.current);
+    dbToMag(micDb.current, micMag.current);
+    const a = analyzeTuning(micMag.current, ctx.sampleRate, TUNE_FFT, TUNE_OPTS);
+    if (a.energy > TUNE_ENERGY_FLOOR && a.nPeaks >= 5) spreads.current.push(a.spreadCents);
+  };
+  const startTuningMic = async () => {
+    if (micStream.current) return; // already listening
+    const g = ++micGen.current;
+    try {
+      const ctx = ensureAudio();
+      const ms = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
+      if (g !== micGen.current) { ms.getTracks().forEach((t) => t.stop()); return; }
+      micStream.current = ms;
+      const src = ctx.createMediaStreamSource(ms);
+      const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 55; hp.Q.value = 0.707;
+      const an = ctx.createAnalyser(); an.fftSize = TUNE_FFT; an.smoothingTimeConstant = 0.5;
+      src.connect(hp); hp.connect(an);
+      micAn.current = an;
+      micDb.current = new Float32Array(an.frequencyBinCount);
+      micMag.current = new Float32Array(an.frequencyBinCount);
+      setMicDenied(false);
+      if (micTimer.current) clearInterval(micTimer.current);
+      micTimer.current = setInterval(sampleTuning, 180);
+    } catch {
+      if (g !== micGen.current) return;
+      setMicDenied(true);
+      if (onSetTuningMonitor) onSetTuningMonitor(false); // couldn't get the mic — turn the opt-in back off
+    }
+  };
+  const stopTuningMic = () => {
+    micGen.current++;
+    if (micTimer.current) { clearInterval(micTimer.current); micTimer.current = null; }
+    if (micStream.current) { micStream.current.getTracks().forEach((t) => t.stop()); micStream.current = null; }
+    micAn.current = null;
+  };
+
   // Ear-training ping: a soft tonic triad so the player can pitch themselves.
   const pingChord = (freqs) => {
     const ctx = ensureAudio();
@@ -135,6 +201,7 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
     endedRef.current = false;
     if (fadeRef.current) { clearTimeout(fadeRef.current); fadeRef.current = null; }
     setLeaving(false); // the new song fades in fresh
+    spreads.current = []; setTuningNudge(false); // fresh tuning read per song
     setTagEditing(false); setTagDraft('');
     setCapo(song.capo || 0);
     setTranspose(prefs.transpose ?? 0);
@@ -170,11 +237,21 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
     }, 240);
   }, [countdown]);
 
-  // Cancel any running countdown / metronome when the view unmounts.
+  // Listen only while opted-in AND actually playing (so the mic isn't hot while
+  // you're just reading the sheet). Accumulation persists across pause/resume;
+  // it's reset per song above.
+  useEffect(() => {
+    if (tuningMonitor && playing) startTuningMic();
+    else stopTuningMic();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tuningMonitor, playing, song.id]);
+
+  // Cancel any running countdown / metronome / mic when the view unmounts.
   useEffect(() => () => {
     if (cdRef.current) clearInterval(cdRef.current);
     if (fadeRef.current) clearTimeout(fadeRef.current);
     if (schedRef.current) clearInterval(schedRef.current);
+    stopTuningMic();
     if (actx.current) { try { actx.current.close(); } catch (e) { /* already closed */ } }
   }, []);
 
@@ -469,6 +546,11 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
 
       {playlist && countdown != null && !leaving && (
         <div className="sv-cd">
+          {tuningNudge && (
+            <button className="sv-cd-tune" onClick={() => onOpenTuner && onOpenTuner()}>
+              <Icon n="mic" s={14} />Sounds a touch out of tune — tune up
+            </button>
+          )}
           {countdown === 'done' ? (
             <>
               <span className="sv-cd-text">Playlist finished</span>
@@ -491,6 +573,22 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
               </div>
             </>
           )}
+        </div>
+      )}
+
+      {!playlist && tuningNudge && (
+        <div className="sv-tunebar">
+          <Icon n="mic" s={16} />
+          <span className="sv-tunebar-txt">Sounds a touch out of tune.</span>
+          <button className="sv-tunebar-go" onClick={() => onOpenTuner && onOpenTuner()}>Tune up</button>
+          <button className="sv-tunebar-x" aria-label="Dismiss" onClick={() => setTuningNudge(false)}><Icon n="x" s={14} /></button>
+        </div>
+      )}
+      {micDenied && (
+        <div className="sv-tunebar sv-tunebar--muted">
+          <Icon n="circle-alert" s={16} />
+          <span className="sv-tunebar-txt">Mic access is blocked — tuning check is off.</span>
+          <button className="sv-tunebar-x" aria-label="Dismiss" onClick={() => setMicDenied(false)}><Icon n="x" s={14} /></button>
         </div>
       )}
 
@@ -521,6 +619,12 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
           <button className={'sv-metro' + (keyPing ? ' is-on' : '')} aria-label={keyPing ? 'Turn key ping off' : 'Turn key ping on'} aria-pressed={keyPing} title="Ear-training key ping — hear the key before you play" onClick={onToggleKeyPing}><Icon n="ear" s={20} /></button>
         )}
         <button className={'sv-metro' + (metronome ? ' is-on' : '')} aria-label={metronome ? 'Turn metronome off' : 'Turn metronome on'} aria-pressed={metronome} title={`Metronome (${metroBpmRef.current} BPM)`} onClick={toggleMetronome}><Icon n="metronome" s={20} /></button>
+        {onSetTuningMonitor && (
+          <button className={'sv-metro sv-mic' + (tuningMonitor ? ' is-on' : '') + (tuningMonitor && playing ? ' sv-mic--live' : '')}
+            aria-label={tuningMonitor ? 'Turn tuning check off' : 'Turn tuning check on'} aria-pressed={tuningMonitor}
+            title="Tuning check — listens while you play and flags if the guitar drifts out of tune"
+            onClick={() => onSetTuningMonitor(!tuningMonitor)}><Icon n="mic" s={20} /></button>
+        )}
       </div>
 
       <div className="sv-chordpop" ref={popRef}></div>
