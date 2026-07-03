@@ -97,6 +97,10 @@ const isChordLine = (s) => {
   const toks = s.trim().split(/\s+/).filter(Boolean);
   return toks.length > 0 && toks.every(isChordToken);
 };
+// A chord line carries real column positions if it's indented or has a multi-space
+// gap between chords. Without either (chords flush-left, single-spaced) the columns
+// are meaningless — the hallmark of a PDF/print copy that flattened the 2-D layout.
+const isPositioned = (s) => /^\s/.test(s) || /\S {2,}\S/.test(s);
 
 // Place each chord into the lyric line at the column where it sat. Insert
 // right-to-left so earlier offsets stay valid; a chord past the line's end
@@ -129,9 +133,24 @@ export function cleanToChordPro(rawText) {
     if (isBlankLine(line)) { body.push(''); continue; }
     if (isSectionHeader(line)) { body.push(sectionComment(line)); continue; }
     if (isChordLine(line)) {
+      // A run of consecutive position-less chord lines sitting directly on a
+      // lyric is a PDF/print copy that broke one chord row into several lines
+      // (each chord dropped onto its own line, column info lost). Gather those
+      // chords back onto one row above the lyric instead of stranding all but
+      // one and jamming the last at column 0.
+      let j = i;
+      while (j < lines.length && isChordLine(lines[j])) j++;
+      const after = lines[j];
+      const afterIsLyric = after != null && !isBlankLine(after) && !isSectionHeader(after);
+      if (afterIsLyric && j - i >= 2 && lines.slice(i, j).every((l) => !isPositioned(l))) {
+        body.push(chordsOnlyLine(lines.slice(i, j).join(' '))); // one coalesced chord row
+        body.push(after);                                        // the lyric, left plain
+        i = j; // the run and its lyric are consumed
+        continue;
+      }
       const next = lines[i + 1];
       if (next != null && !isBlankLine(next) && !isChordLine(next) && !isSectionHeader(next)) {
-        body.push(mergeChordsIntoLyric(line, next));
+        body.push(mergeChordsIntoLyric(line, next)); // aligned: place each by column
         i++; // the lyric line is now consumed
       } else {
         body.push(chordsOnlyLine(line)); // chords with nothing to sit on
