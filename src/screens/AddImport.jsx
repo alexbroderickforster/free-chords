@@ -6,6 +6,7 @@ import { Input, Autocomplete, Button, Card, SegmentedControl, Stepper, Tag, Icon
 import { cleanToChordPro, uniqueChords, toSections, looksFlattened } from '../lib/chordpro.js';
 import { isMostlyTab } from '../lib/tab.js';
 import { extractSongFromImage } from '../lib/imageImport.js';
+import { ApiKeyField } from './Settings.jsx';
 
 const SAMPLE = `C               G
 Slip inside the eye of your mind
@@ -20,7 +21,7 @@ D|---------------------------------|
 A|-----------------5-5-3-----------|
 E|---3-3-3-3-5-5-5---------3-3------|`;
 
-export function AddImport({ onSave, onBack, knownTags = [], artistOptions = [], albumOptions = [], apiKey = '' }) {
+export function AddImport({ onSave, onBack, knownTags = [], artistOptions = [], albumOptions = [], apiKey = '', onSaveApiKey }) {
   const [title, setTitle] = useState('');
   const [artist, setArtist] = useState('');
   const [album, setAlbum] = useState('');
@@ -36,10 +37,12 @@ export function AddImport({ onSave, onBack, knownTags = [], artistOptions = [], 
 
   // Image upload state.
   const imgRef = useRef(null);
+  const lastFileRef = useRef(null); // keep the last image so it can be re-read with Claude
   const [imgBusy, setImgBusy] = useState(''); // '' | 'preparing' | 'claude' | 'ocr'
   const [imgProgress, setImgProgress] = useState(0);
   const [imgMethod, setImgMethod] = useState(null); // 'claude' | 'ocr' after success
   const [imgError, setImgError] = useState('');
+  const [showKey, setShowKey] = useState(false); // reveal the inline Claude-key field
 
   const isTab = format === 'tab';
 
@@ -71,10 +74,8 @@ export function AddImport({ onSave, onBack, knownTags = [], artistOptions = [], 
   };
   const reset = () => { setCleaned(''); setRaw(''); setTitle(''); setArtist(''); setAlbum(''); setKey(''); setCapo(0); setTags([]); setTagDraft(''); setImgMethod(null); setImgError(''); };
 
-  // Upload a screenshot → Claude vision (if a key is set) or on-device OCR.
-  const onPickImage = async (e) => {
-    const file = e.target.files && e.target.files[0];
-    e.target.value = '';
+  // Read an image → Claude vision (if a key is set) or on-device OCR.
+  const runImport = async (file) => {
     if (!file) return;
     setImgError(''); setImgMethod(null); setImgProgress(0); setImgBusy('preparing');
     try {
@@ -97,6 +98,15 @@ export function AddImport({ onSave, onBack, knownTags = [], artistOptions = [], 
       setImgBusy(''); setImgProgress(0);
     }
   };
+  const onPickImage = (e) => {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if (!file) return;
+    lastFileRef.current = file;
+    runImport(file);
+  };
+  // Re-run the last image through Claude once a key has been added.
+  const rereadWithClaude = () => { if (lastFileRef.current) runImport(lastFileRef.current); };
 
   const imgStatusText = () => {
     if (imgBusy === 'preparing') return 'Preparing image…';
@@ -200,17 +210,27 @@ export function AddImport({ onSave, onBack, knownTags = [], artistOptions = [], 
             <span className="add-imghint">
               {apiKey
                 ? 'Reads chords with Claude vision.'
-                : <>No Claude API key — uses on-device OCR (rougher). Add a key in Backup &amp; Sync for best results.</>}
+                : <>No Claude key — uses on-device OCR (rougher). <button type="button" className="bk-link" onClick={() => setShowKey(true)}>Add a Claude key</button> for best results.</>}
             </span>
           </div>
+          {showKey && !apiKey && (
+            <div className="add-keyinline"><ApiKeyField apiKey={apiKey} onSave={onSaveApiKey} /></div>
+          )}
           {imgBusy && <div className="add-imgstatus"><span className="add-imgspin" aria-hidden="true" />{imgStatusText()}</div>}
           {imgError && <div className="add-imgmsg add-imgmsg--err"><Icon n="circle-alert" s={14} />{imgError}</div>}
-          {imgMethod && !imgBusy && !imgError && (
-            <div className="add-imgmsg add-imgmsg--ok">
-              <Icon n="check" s={14} />
-              {imgMethod === 'claude'
-                ? 'Read with Claude — review and tidy below before saving.'
-                : 'Read with on-device OCR — alignment is rough, so check it over before saving.'}
+          {imgMethod === 'claude' && !imgBusy && !imgError && (
+            <div className="add-imgmsg add-imgmsg--ok"><Icon n="check" s={14} />Read with Claude — review and tidy below before saving.</div>
+          )}
+          {imgMethod === 'ocr' && !imgBusy && !imgError && (
+            <div className="add-imgmsg add-imgmsg--warn">
+              <Icon n="circle-alert" s={14} />
+              <span>
+                Read with on-device OCR — chords can be misread (a “G” as “6”) and alignment is rough.{' '}
+                {apiKey
+                  ? <button type="button" className="bk-link" onClick={rereadWithClaude}>Re-read this image with Claude</button>
+                  : <button type="button" className="bk-link" onClick={() => setShowKey(true)}>Add a Claude key</button>}
+                {' '}for an accurate read.
+              </span>
             </div>
           )}
         </div>

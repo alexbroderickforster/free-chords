@@ -30,7 +30,8 @@ export function SyncBadge({ syncConfigured, syncOn, syncStatus, onOpen }) {
 }
 
 // Claude API key for image import. Device-local only; never synced or exported.
-function ApiKeyField({ apiKey, onSave }) {
+// Exported so the Add-song screen can offer the same field inline.
+export function ApiKeyField({ apiKey, onSave }) {
   const has = !!(apiKey && apiKey.trim());
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');

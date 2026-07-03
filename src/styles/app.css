@@ -284,6 +284,11 @@ body {
 .add-imgmsg--ok { color: var(--ink-soft); }
 .add-imgmsg--ok svg { color: var(--good); }
 .add-imgmsg--err { color: var(--danger); }
+.add-imgmsg--warn { color: var(--ink-soft); }
+.add-imgmsg--warn svg { color: var(--accent); }
+.add-imgmsg--warn .bk-link { font-size: inherit; }
+.add-keyinline { margin-top: 6px; }
+.add-keyinline .bk-key { margin-top: 0; padding-top: 0; border-top: none; }
 .add-flathint { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 12px; padding: 12px 14px; background: var(--accent-soft); border: 1px solid color-mix(in oklab, var(--accent) 22%, transparent); border-radius: var(--radius-md); }
 .add-flathint-ic { color: var(--accent); flex: none; }
 .add-flathint-body { flex: 1; min-width: 200px; font-size: var(--text-sm); color: var(--ink-soft); line-height: 1.5; }

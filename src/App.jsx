@@ -481,7 +481,7 @@ export function App() {
       <main className="app-body">
         {tab === 'songs' && <Library songs={songs} tags={knownTags} onOpen={openSong} onAdd={() => setTab('add')} artistFilter={artistFilter} onClearArtist={() => setArtistFilter(null)} onArtist={goArtist} onToggleStar={toggleStar} onCycleStatus={cycleStatus} onAddToPlaylist={setAddToPlaylistSong} />}
         {tab === 'playlists' && <Playlists playlists={playlists} albums={albumOptions} resolvePlaylistSongs={resolvePlaylistSongs} onOpenSong={openSong} onPlayPlaylist={startPlaylist} onCreatePlaylist={createPlaylist} onCreateAlbumPlaylist={createAlbumPlaylist} onRenamePlaylist={renamePlaylist} onDeletePlaylist={deletePlaylist} onRemoveSong={removeSongFromPlaylist} onMoveSong={movePlaylistSong} onExport={exportPlaylist} />}
-        {tab === 'add' && <AddImport onBack={() => setTab('songs')} knownTags={knownTags} artistOptions={artistOptions} albumOptions={albumOptions} apiKey={apiKey} onSave={addSong} />}
+        {tab === 'add' && <AddImport onBack={() => setTab('songs')} knownTags={knownTags} artistOptions={artistOptions} albumOptions={albumOptions} apiKey={apiKey} onSaveApiKey={setApiKey} onSave={addSong} />}
         {tab === 'practice' && <Practice loops={loops} onSaveLoop={saveLoop} onDeleteLoop={deleteLoop} initialLoop={initialLoop} />}
         {tab === 'tuner' && <TunerView />}
         {tab === 'settings' && <Settings {...backupProps} dark={dark} onToggleTheme={toggleTheme} />}
