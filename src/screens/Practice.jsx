@@ -52,9 +52,16 @@ export function Practice({ loops = [], onSaveLoop, onDeleteLoop, initialLoop }) 
   const pendingLocal = useRef(null); // A/B/speed carried over for a local-file saved loop
   const dragging = useRef(false);
 
+  const trackRef = useRef(null);
+
   // Mirror live state for the rAF loop + key handlers (no stale closures).
   const latest = useRef({});
   latest.current = { source, a, b, speed, preRoll, ytRates, duration, playing };
+
+  const round1 = (n) => Math.round(n * 10) / 10;
+  // When a fresh source loads with no loop, default the pins to the whole clip
+  // so they're immediately visible and draggable.
+  const defaultAB = (d) => { if (d > 0 && latest.current.a == null && latest.current.b == null) { setA(0); setB(round1(d)); } };
 
   // ---- player accessors (whichever source is active) ----
   const getTime = () => {
@@ -154,13 +161,15 @@ export function Practice({ loops = [], onSaveLoop, onDeleteLoop, initialLoop }) 
       ytWrap.current.appendChild(target);
       ytPlayer.current = new YT.Player(target, {
         videoId: ytId,
-        playerVars: { rel: 0, modestbranding: 1, playsinline: 1 },
+        playerVars: { rel: 0, modestbranding: 1, playsinline: 1, controls: 0 },
         events: {
           onReady: (ev) => {
             setReady(true);
-            setDuration(ev.target.getDuration() || 0);
+            const d = ev.target.getDuration() || 0;
+            setDuration(d);
             try { const r = ev.target.getAvailablePlaybackRates(); if (r && r.length) setYtRates(r); } catch { /* ignore */ }
             applyRate(latest.current.speed);
+            defaultAB(d);
           },
           onStateChange: (ev) => {
             if (ev.data === 1) { setPlaying(true); const d = ev.target.getDuration(); if (d) setDuration(d); }
@@ -186,7 +195,7 @@ export function Practice({ loops = [], onSaveLoop, onDeleteLoop, initialLoop }) 
     el.src = audioSrc;
     el.playbackRate = latest.current.speed;
     try { el.preservesPitch = el.mozPreservesPitch = el.webkitPreservesPitch = true; } catch { /* ignore */ }
-    const onMeta = () => { setDuration(el.duration || 0); setReady(true); };
+    const onMeta = () => { const d = el.duration || 0; setDuration(d); setReady(true); defaultAB(d); };
     const onPlay = () => setPlaying(true);
     const onPause = () => setPlaying(false);
     el.addEventListener('loadedmetadata', onMeta);
@@ -242,8 +251,8 @@ export function Practice({ loops = [], onSaveLoop, onDeleteLoop, initialLoop }) 
       if (k === 'p' || k === 'P') return hit(() => doShift(1));
       if (k === '[') return hit(() => doScale(0.5));
       if (k === ']') return hit(() => doScale(2));
-      if (k === '-' || k === '_' || k === ',') return hit(() => bumpSpeed(-0.05));
-      if (k === '=' || k === '+' || k === '.') return hit(() => bumpSpeed(0.05));
+      if (k === '-' || k === '_' || k === ',') return hit(() => stepSpeed(-1));
+      if (k === '=' || k === '+' || k === '.') return hit(() => stepSpeed(1));
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -251,7 +260,6 @@ export function Practice({ loops = [], onSaveLoop, onDeleteLoop, initialLoop }) 
   }, []);
 
   // ---- actions ----
-  const round1 = (n) => Math.round(n * 10) / 10;
   const togglePlay = () => { if (!source) return; if (latest.current.playing) pause(); else play(); };
   const clearLoop = () => { setA(null); setB(null); };
   const setStart = () => setA(round1(getTime()));
@@ -260,9 +268,48 @@ export function Practice({ loops = [], onSaveLoop, onDeleteLoop, initialLoop }) 
   const nudgeB = (d) => setB((v) => (v == null ? v : clamp(round1(v + d), 0, duration || Infinity)));
   const doShift = (dir) => { const { a: la, b: lb } = latest.current; const r = shiftLoop(la, lb, duration, dir); setA(r.a); setB(r.b); if (latest.current.playing) seek(r.a); };
   const doScale = (f) => { const { a: la, b: lb } = latest.current; const r = scaleLoop(la, lb, duration, f); setA(r.a); setB(r.b); };
-  const bumpSpeed = (d) => setSpeed((v) => clamp(round1(v + d), 0.25, 2));
+  // Speed from the slider: for YouTube snap to its allowed rates (so it never
+  // feels "stuck" between them); for audio it's continuous, with a soft detent
+  // at 1× so normal speed is easy to hit.
+  const setSpeedFromSlider = (val) => {
+    const s = latest.current;
+    if (s.source && s.source.kind === 'youtube') setSpeed(snapRate(val, s.ytRates));
+    else { let v = round1(val); if (Math.abs(v - 1) < 0.06) v = 1; setSpeed(clamp(v, 0.25, 2)); }
+  };
+  // Slower / faster by one step. YouTube steps through its allowed rates; audio
+  // steps by 0.05.
+  const stepSpeed = (dir) => {
+    const s = latest.current;
+    if (s.source && s.source.kind === 'youtube') {
+      const rates = (s.ytRates && s.ytRates.length ? s.ytRates.slice() : DEFAULT_RATES.slice()).sort((x, y) => x - y);
+      let i = rates.indexOf(snapRate(s.speed, rates));
+      if (i === -1) i = 0;
+      setSpeed(rates[clamp(i + dir, 0, rates.length - 1)]);
+    } else {
+      setSpeed(clamp(round1(s.speed + dir * 0.05), 0.25, 2));
+    }
+  };
 
   const seekFrac = (frac) => { if (duration) seek(clamp(frac, 0, 1) * duration); };
+  // Drag an A or B pin along the track to reposition the loop point.
+  const markDown = (which) => (e) => {
+    e.stopPropagation(); e.preventDefault();
+    const track = trackRef.current || (e.currentTarget.closest && e.currentTarget.closest('.pr-track'));
+    if (!track) return;
+    const rect = track.getBoundingClientRect();
+    const apply = (clientX) => {
+      const frac = clamp((clientX - rect.left) / rect.width, 0, 1);
+      let t = round1(frac * (latest.current.duration || 0));
+      if (which === 'a') { const bb = latest.current.b; if (bb != null) t = Math.min(t, bb); setA(t); }
+      else { const aa = latest.current.a; if (aa != null) t = Math.max(t, aa); setB(t); }
+    };
+    apply(e.clientX);
+    dragging.current = true;
+    const onMove = (ev) => apply(ev.clientX);
+    const onUp = () => { dragging.current = false; window.removeEventListener('pointermove', onMove); window.removeEventListener('pointerup', onUp); };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+  };
   const trackDown = (e) => {
     if (!duration) return;
     dragging.current = true;
@@ -309,6 +356,7 @@ export function Practice({ loops = [], onSaveLoop, onDeleteLoop, initialLoop }) 
 
   const loopLen = a != null && b != null ? Math.max(0, b - a) : 0;
   const pct = (t) => (duration ? clamp(t / duration, 0, 1) * 100 : 0);
+  const shownRate = source && source.kind === 'youtube' ? snapRate(speed, ytRates) : speed;
 
   return (
     <div className="screen practice">
@@ -340,33 +388,50 @@ export function Practice({ loops = [], onSaveLoop, onDeleteLoop, initialLoop }) 
         </Card>
       ) : (
         <>
-          {/* Player */}
-          <div className="pr-player">
+          {/* Player with an integrated full-width scrubber + draggable A/B pins */}
+          <div className="pr-stage">
             {source.kind === 'youtube'
-              ? <div className="pr-yt" ref={ytWrap} />
-              : <div className="pr-audiocard"><Icon n={playing ? 'audio-lines' : 'music'} s={22} /><span className="pr-audioname">{source.label}</span></div>}
-          </div>
-
-          {/* Timeline */}
-          <div className="pr-timeline">
-            <div className="pr-track" onPointerDown={trackDown}>
-              {a != null && b != null && b > a && (
-                <div className="pr-loopband" style={{ left: pct(a) + '%', width: (pct(b) - pct(a)) + '%' }} />
-              )}
-              <div className="pr-played" style={{ width: pct(cur) + '%' }} />
-              {a != null && <div className="pr-mark pr-mark--a" style={{ left: pct(a) + '%' }}><span>A</span></div>}
-              {b != null && <div className="pr-mark pr-mark--b" style={{ left: pct(b) + '%' }}><span>B</span></div>}
-              <div className="pr-head" style={{ left: pct(cur) + '%' }} />
+              ? <div className="pr-video" ref={ytWrap} />
+              : <div className="pr-video pr-video--audio"><Icon n={playing ? 'audio-lines' : 'music'} s={26} /><span className="pr-audioname">{source.label}</span></div>}
+            <div className="pr-scrub">
+              <div className="pr-track" ref={trackRef} onPointerDown={trackDown}>
+                {a != null && b != null && b > a && (
+                  <div className="pr-loopband" style={{ left: pct(a) + '%', width: (pct(b) - pct(a)) + '%' }} />
+                )}
+                <div className="pr-played" style={{ width: pct(cur) + '%' }} />
+                <div className="pr-head" style={{ left: pct(cur) + '%' }} />
+                {a != null && (
+                  <div className="pr-mark pr-mark--a" style={{ left: pct(a) + '%' }} onPointerDown={markDown('a')} role="slider" aria-label="Loop start" tabIndex={0}>
+                    <span className="pr-mark-line" /><span className="pr-mark-pin">A</span>
+                  </div>
+                )}
+                {b != null && (
+                  <div className="pr-mark pr-mark--b" style={{ left: pct(b) + '%' }} onPointerDown={markDown('b')} role="slider" aria-label="Loop end" tabIndex={0}>
+                    <span className="pr-mark-line" /><span className="pr-mark-pin">B</span>
+                  </div>
+                )}
+              </div>
             </div>
-            <div className="pr-times"><span>{fmtTime(cur)}</span><span>{fmtTime(duration)}</span></div>
           </div>
 
-          {/* Transport */}
-          <div className="pr-transport">
-            <button className="pr-ic" aria-label="Back 5 seconds" onClick={() => seek(getTime() - 5)}><Icon n="skip-back" s={18} /></button>
-            <button className="pr-play" aria-label={playing ? 'Pause' : 'Play'} onClick={togglePlay}><Icon n={playing ? 'pause' : 'play'} s={26} /></button>
-            <button className="pr-ic" aria-label="Forward 5 seconds" onClick={() => seek(getTime() + 5)}><Icon n="skip-forward" s={18} /></button>
-            <button className="pr-ic" aria-label="Restart loop" onClick={() => a != null && seek(a)}><Icon n="rotate-ccw" s={18} /></button>
+          {/* Transport + speed */}
+          <div className="pr-controls">
+            <div className="pr-transport">
+              <button className="pr-ic" aria-label="Back 5 seconds" onClick={() => seek(getTime() - 5)}><Icon n="skip-back" s={18} /></button>
+              <button className="pr-play" aria-label={playing ? 'Pause' : 'Play'} onClick={togglePlay}><Icon n={playing ? 'pause' : 'play'} s={26} /></button>
+              <button className="pr-ic" aria-label="Forward 5 seconds" onClick={() => seek(getTime() + 5)}><Icon n="skip-forward" s={18} /></button>
+              <button className="pr-ic" aria-label="Restart loop" onClick={() => a != null && seek(a)}><Icon n="rotate-ccw" s={18} /></button>
+              <span className="pr-time">{fmtTime(cur)}<span className="pr-time-sep">/</span>{fmtTime(duration)}</span>
+            </div>
+            <div className="pr-speed">
+              <button className="pr-spd-ic" aria-label="Slower" onClick={() => stepSpeed(-1)}><Icon n="turtle" s={20} /></button>
+              <div className="pr-speed-track">
+                <input type="range" min="0.25" max="2" step="0.05" value={speed} onChange={(e) => setSpeedFromSlider(Number(e.target.value))} aria-label="Playback speed" />
+                <span className="pr-speed-center" aria-hidden="true" />
+              </div>
+              <button className="pr-spd-ic" aria-label="Faster" onClick={() => stepSpeed(1)}><Icon n="rabbit" s={20} /></button>
+              <span className="pr-rate" title={source.kind === 'youtube' ? 'Snaps to YouTube’s speed steps' : ''}><Icon n="clock" s={14} />{shownRate.toFixed(2)}×</span>
+            </div>
           </div>
 
           {/* Loop points */}
@@ -387,19 +452,6 @@ export function Practice({ loops = [], onSaveLoop, onDeleteLoop, initialLoop }) 
               <div className="pr-mini"><span className="pr-mini-lbl">Shift</span><button onClick={() => doShift(-1)} disabled={a == null || b == null} aria-label="Shift loop back">◀</button><button onClick={() => doShift(1)} disabled={a == null || b == null} aria-label="Shift loop forward">▶</button></div>
               <div className="pr-mini"><span className="pr-mini-lbl">Length</span><button onClick={() => doScale(0.5)} disabled={a == null || b == null}>½</button><button onClick={() => doScale(2)} disabled={a == null || b == null}>2×</button></div>
               <div className="pr-mini"><span className="pr-mini-lbl">Pre-roll</span><button onClick={() => setPreRoll((v) => Math.max(0, round1(v - 0.5)))} disabled={preRoll <= 0}>−</button><span>{preRoll ? preRoll.toFixed(1) + 's' : 'off'}</span><button onClick={() => setPreRoll((v) => round1(v + 0.5))}>+</button></div>
-            </div>
-          </div>
-
-          {/* Speed */}
-          <div className="pr-block">
-            <div className="pr-block-h fc-eyebrow">Speed <span className="pr-loose">{speed.toFixed(2)}×{source.kind === 'youtube' ? ' (snaps to YouTube steps)' : ''}</span></div>
-            <div className="pr-speed">
-              <button className="pr-btn pr-btn--quiet" onClick={() => bumpSpeed(-0.05)}>Slower</button>
-              <input type="range" min="0.25" max="2" step="0.05" value={speed} onChange={(e) => setSpeed(Number(e.target.value))} />
-              <button className="pr-btn pr-btn--quiet" onClick={() => bumpSpeed(0.05)}>Faster</button>
-              <div className="pr-presets">
-                {[0.5, 0.75, 1].map((r) => <button key={r} className={'pr-preset' + (speed === r ? ' is-on' : '')} onClick={() => setSpeed(r)}>{r}×</button>)}
-              </div>
             </div>
           </div>
 

@@ -7,7 +7,7 @@ import {
   Play, Pause, Search, Clipboard, Wand2, Mic, Download, Upload, Pencil, Trash2, CircleAlert,
   ListMusic, SkipBack, SkipForward, ChevronUp, ChevronDown, Ear,
   Image as ImageIcon, KeyRound, Printer, FileDown, WifiOff, Settings as SettingsIcon,
-  Repeat, Share2, Bookmark,
+  Repeat, Share2, Bookmark, Turtle, Rabbit, Clock,
 } from 'lucide-react';
 
 const ICONS = {
@@ -53,6 +53,9 @@ const ICONS = {
   'repeat': Repeat,
   'share-2': Share2,
   'bookmark': Bookmark,
+  'turtle': Turtle,
+  'rabbit': Rabbit,
+  'clock': Clock,
 };
 
 export function Icon({ n, s = 20, cls, ...rest }) {
