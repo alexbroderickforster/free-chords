@@ -79,6 +79,11 @@ export function saveTuningMonitor(v) { write('tuningMonitor', !!v); }
 export function loadTraining() { const d = read('training', null); return d && typeof d === 'object' ? d : null; }
 export function saveTraining(v) { write('training', v); }
 
+// Lifetime per-interval accuracy: { [semitones]: { c, t } }. Drives the adaptive
+// weighting so weaker intervals come up more often.
+export function loadTrainingStats() { const d = read('trainingStats', null); return d && typeof d === 'object' ? d : {}; }
+export function saveTrainingStats(v) { write('trainingStats', v); }
+
 // Claude API key for image import. Device-local only — deliberately NOT part of
 // the Drive-sync payload (it's a secret and must never leave this device).
 export function loadApiKey() { return read('apiKey', '') || ''; }

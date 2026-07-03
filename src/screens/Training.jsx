@@ -3,7 +3,7 @@
 // synthesizes the tones with Web Audio. Settings persist on-device.
 import React, { useState, useRef, useEffect } from 'react';
 import { SegmentedControl, Switch, Icon } from '../components/index.js';
-import { loadTraining, saveTraining } from '../lib/storage.js';
+import { loadTraining, saveTraining, loadTrainingStats, saveTrainingStats } from '../lib/storage.js';
 
 const INTERVALS = [
   { s: 1, short: 'm2', name: 'Minor 2nd' },
@@ -35,8 +35,10 @@ export function Training() {
   const [speed, setSpeed] = useState(SPEED[saved.speed] ? saved.speed : 'medium');
   const [fixedRoot, setFixedRoot] = useState(!!saved.fixedRoot);
   const [autoAdvance, setAutoAdvance] = useState(!!saved.autoAdvance);
+  const [adaptive, setAdaptive] = useState(saved.adaptive !== false); // default on
+  const [stats, setStats] = useState(() => loadTrainingStats()); // { [s]: { c, t } } lifetime per interval
 
-  const [current, setCurrent] = useState(null); // { s, root, dir }
+  const [current, setCurrent] = useState(null); // { s, root, dir, opts }
   const [answered, setAnswered] = useState(null); // { chosen }
   const [score, setScore] = useState({ correct: 0, total: 0 });
   const [streak, setStreak] = useState(0);
@@ -45,9 +47,11 @@ export function Training() {
   const advanceTimer = useRef(null);
   const voices = useRef([]);   // live oscillators, so a new question can cut off the previous one
   const lastS = useRef(null);  // last interval, to avoid immediate repeats
+  const statsRef = useRef(stats); statsRef.current = stats; // latest stats for the weighted pick
   const latest = useRef({});
 
-  useEffect(() => { saveTraining({ enabled, direction, speed, fixedRoot, autoAdvance }); }, [enabled, direction, speed, fixedRoot, autoAdvance]);
+  useEffect(() => { saveTraining({ enabled, direction, speed, fixedRoot, autoAdvance, adaptive }); }, [enabled, direction, speed, fixedRoot, autoAdvance, adaptive]);
+  useEffect(() => { saveTrainingStats(stats); }, [stats]);
   useEffect(() => () => { if (advanceTimer.current) clearTimeout(advanceTimer.current); if (ac.current) { try { ac.current.close(); } catch { /* closed */ } } }, []);
 
   const audio = () => { if (!ac.current) ac.current = new (window.AudioContext || window.webkitAudioContext)(); if (ac.current.resume) ac.current.resume(); return ac.current; };
@@ -89,10 +93,27 @@ export function Training() {
       tone(midiToFreq(second), t0 + sp.dur + sp.gap, sp.dur);
     }
   };
+  // Weight each interval by how weak it is (low accuracy → higher weight) so the
+  // drill leans on your trouble spots, with a floor so mastered ones still recur.
+  // Excludes the previous interval to avoid immediate repeats.
+  const pickWeighted = (pool) => {
+    const cands = pool.length > 1 ? pool.filter((s) => s !== lastS.current) : pool.slice();
+    const st = statsRef.current;
+    const weightOf = (s) => {
+      if (!adaptive) return 1;
+      const r = st[s] || { c: 0, t: 0 };
+      const acc = (r.c + 1) / (r.t + 2); // Laplace-smoothed: unseen → 0.5
+      return 0.2 + (1 - acc);
+    };
+    const weights = cands.map(weightOf);
+    const sum = weights.reduce((a, b) => a + b, 0);
+    let x = Math.random() * sum;
+    for (let i = 0; i < cands.length; i++) { x -= weights[i]; if (x <= 0) return cands[i]; }
+    return cands[cands.length - 1];
+  };
   const genQuestion = () => {
     const pool = enabled;
-    let s;
-    do { s = pool[Math.floor(Math.random() * pool.length)]; } while (pool.length > 1 && s === lastS.current);
+    const s = pickWeighted(pool);
     lastS.current = s;
     const dir = direction === 'both' ? (Math.random() < 0.5 ? 'asc' : 'desc') : direction;
     const root = fixedRoot ? 60 : 57 + Math.floor(Math.random() * 8); // C4 fixed, else A3–E4
@@ -116,9 +137,14 @@ export function Training() {
     setAnswered({ chosen: s });
     setScore((v) => ({ correct: v.correct + (ok ? 1 : 0), total: v.total + 1 }));
     setStreak((v) => (ok ? v + 1 : 0));
+    setStats((prev) => { const r = prev[current.s] || { c: 0, t: 0 }; return { ...prev, [current.s]: { c: r.c + (ok ? 1 : 0), t: r.t + 1 } }; });
     if (ok && autoAdvance) advanceTimer.current = setTimeout(() => play(), 900);
   };
   const resetScore = () => { setScore({ correct: 0, total: 0 }); setStreak(0); };
+  const resetStats = () => setStats({});
+  const accOf = (s) => { const r = stats[s]; return r && r.t ? Math.round((r.c / r.t) * 100) : null; };
+  const accLvl = (a) => (a == null ? '' : a < 60 ? 'low' : a < 85 ? 'mid' : 'high');
+  const attempted = Object.values(stats).reduce((n, r) => n + (r && r.t ? 1 : 0), 0);
 
   // Keyboard: space plays / replays / advances; number keys pick a choice.
   latest.current = { current, answered, enabled, play, replay, choose };
@@ -200,12 +226,17 @@ export function Training() {
             ))}
           </div>
           <div className="tr-ivgrid">
-            {INTERVALS.map((iv) => (
-              <button key={iv.s} className={'tr-iv' + (enabled.includes(iv.s) ? ' on' : '')} onClick={() => toggleInterval(iv.s)} aria-pressed={enabled.includes(iv.s)}>
-                <span className="tr-iv-short">{iv.short}</span><span className="tr-iv-name">{iv.name}</span>
-              </button>
-            ))}
+            {INTERVALS.map((iv) => {
+              const a = accOf(iv.s);
+              return (
+                <button key={iv.s} className={'tr-iv' + (enabled.includes(iv.s) ? ' on' : '')} onClick={() => toggleInterval(iv.s)} aria-pressed={enabled.includes(iv.s)}>
+                  <span className="tr-iv-short">{iv.short}</span><span className="tr-iv-name">{iv.name}</span>
+                  {a != null && <span className="tr-iv-acc" data-lvl={accLvl(a)} title={`${a}% right so far`}>{a}%</span>}
+                </button>
+              );
+            })}
           </div>
+          {attempted > 0 && <div className="tr-progress"><span>Tracking accuracy on {attempted} interval{attempted === 1 ? '' : 's'}</span><button className="tr-reset" onClick={resetStats}>Reset progress</button></div>}
         </div>
 
         <div className="tr-set-row">
@@ -224,6 +255,7 @@ export function Training() {
         </div>
 
         <div className="tr-toggles">
+          <Switch checked={adaptive} onChange={() => setAdaptive((v) => !v)} label="Adaptive — drill your weaker intervals more often" />
           <Switch checked={fixedRoot} onChange={() => setFixedRoot((v) => !v)} label="Fixed root — start every interval on the same note" />
           <Switch checked={autoAdvance} onChange={() => setAutoAdvance((v) => !v)} label="Auto-advance after a correct answer" />
         </div>
