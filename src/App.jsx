@@ -10,7 +10,7 @@ import { AddImport } from './screens/AddImport.jsx';
 import { TunerView } from './screens/TunerView.jsx';
 import { SONGS, ALL_TAGS } from './data/songs.js';
 import { nextStatus } from './lib/music.js';
-import { BackupControls } from './screens/Backup.jsx';
+import { Settings, SyncBadge } from './screens/Settings.jsx';
 import { loadSongs, saveSongs, loadTags, saveTags, loadTheme, saveTheme, loadThemeAt, saveThemeAt, loadPrefs, savePrefs, loadDeletions, saveDeletions, loadSyncOptIn, saveSyncOptIn, loadPlaylists, savePlaylists, loadPlaylistDeletions, savePlaylistDeletions, loadKeyPing, saveKeyPing, loadApiKey, saveApiKey } from './lib/storage.js';
 import { exportSongbook, parseBackup } from './lib/backup.js';
 import { renderSongbookHtml, downloadHtml, openDoc } from './lib/songbookExport.js';
@@ -405,6 +405,7 @@ export function App() {
     { value: 'songs', label: 'Songs', icon: <Icon n="library" s={22} /> },
     { value: 'playlists', label: 'Playlists', icon: <Icon n="list-music" s={22} /> },
     { value: 'tuner', label: 'Tuner', icon: <Icon n="audio-lines" s={22} /> },
+    { value: 'settings', label: 'Settings', icon: <Icon n="settings" s={22} /> },
   ];
   // NOTE: 'Add' lives as a button on the Songs page header (not a nav item).
   // 'Practice' is parked — still in screens/Practice.jsx; see that file.
@@ -443,11 +444,11 @@ export function App() {
     ? <SongView song={song} onBack={closeSong} onArtist={goArtist} dark={dark} onToggleTheme={toggleTheme} focusMode={focus} onToggleFocus={() => setFocus((f) => !f)} onToggleStar={toggleStar} onCycleStatus={cycleStatus} onUpdateTags={updateTags} onEdit={() => setEditing(true)} prefs={prefsFor(song.id)} onSavePref={(patch) => savePref(song.id, patch)} onCapo={(v) => updateSong(song.id, { capo: v })} onAddToPlaylist={setAddToPlaylistSong} playlist={svPlaylist} onPlaylistNext={playlistNext} onPlaylistPrev={playlistPrev} onPlaylistExit={exitPlaylist} keyPing={keyPing} onToggleKeyPing={() => setKeyPing((v) => !v)} onExport={exportSong} />
     : (
       <main className="app-body">
-        {tab === 'songs' && <Library songs={songs} tags={knownTags} onOpen={openSong} onAdd={() => setTab('add')} artistFilter={artistFilter} onClearArtist={() => setArtistFilter(null)} onArtist={goArtist} onToggleStar={toggleStar} onCycleStatus={cycleStatus} onAddToPlaylist={setAddToPlaylistSong}
-          backupSlot={<BackupControls className="bk--mobile" {...backupProps} />} />}
+        {tab === 'songs' && <Library songs={songs} tags={knownTags} onOpen={openSong} onAdd={() => setTab('add')} artistFilter={artistFilter} onClearArtist={() => setArtistFilter(null)} onArtist={goArtist} onToggleStar={toggleStar} onCycleStatus={cycleStatus} onAddToPlaylist={setAddToPlaylistSong} />}
         {tab === 'playlists' && <Playlists playlists={playlists} albums={albumOptions} resolvePlaylistSongs={resolvePlaylistSongs} onOpenSong={openSong} onPlayPlaylist={startPlaylist} onCreatePlaylist={createPlaylist} onCreateAlbumPlaylist={createAlbumPlaylist} onRenamePlaylist={renamePlaylist} onDeletePlaylist={deletePlaylist} onRemoveSong={removeSongFromPlaylist} onMoveSong={movePlaylistSong} onExport={exportPlaylist} />}
         {tab === 'add' && <AddImport onBack={() => setTab('songs')} knownTags={knownTags} artistOptions={artistOptions} albumOptions={albumOptions} apiKey={apiKey} onSave={addSong} />}
         {tab === 'tuner' && <TunerView />}
+        {tab === 'settings' && <Settings {...backupProps} dark={dark} onToggleTheme={toggleTheme} />}
       </main>
     );
 
@@ -461,8 +462,7 @@ export function App() {
         onChange={goTab}
         footer={
           <>
-            <BackupControls className="bk--sidenav" {...backupProps} />
-            <div className="app-footdiv" aria-hidden="true" />
+            <SyncBadge syncConfigured={syncConfigured()} syncOn={syncOn} syncStatus={syncStatus} onOpen={() => goTab('settings')} />
             <Button variant="ghost" block iconLeft={<Icon n={dark ? 'sun' : 'moon'} s={18} />} onClick={toggleTheme}>
               {dark ? 'Light mode' : 'Dark mode'}
             </Button>
