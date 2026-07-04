@@ -47,10 +47,11 @@ the first load).
   - **Paste** raw chords copied from a webpage — they're auto-aligned into
     chords-over-lyrics (ChordPro), with a live preview and detected-chord chips.
     Handles PDF/OCR-flattened pastes (where the columns are lost) gracefully.
-  - **Upload a screenshot** — reads the chart with **Claude vision**: your own
-    API key (browser-direct, no backend), or an optional **shared reader** the
-    owner can enable so it works with no key of your own (see **Shared image
-    import** below), falling back to on-device **OCR** otherwise.
+  - **Upload a screenshot** — **Claude vision** reads the chart into ChordPro
+    with the chords over the right words. Uses your own API key (browser-direct,
+    no backend), or an optional **shared reader** the owner can enable so it
+    works with no key at all (see **Shared image import** below); falls back to
+    on-device **OCR** otherwise.
   - **Grid editor** — type or paste lyrics, then click above any word to drop a
     chord from a type-to-filter picker; drag a chord to nudge it, place chords on
     lyric-less lines (intros/turnarounds), and bulk-paste a whole verse. Round-

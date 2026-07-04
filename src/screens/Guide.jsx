@@ -37,7 +37,7 @@ export function Guide({ firstRun = false, onGo, onDone, onFeedback }) {
           </Feature>
           <Feature icon="image" title="Upload a screenshot" go="add" onGo={onGo} action="Add a song">
             {hasSharedReader
-              ? 'Snap or screenshot a chart and Claude reads the chords for you — no setup needed. Add your own key for unlimited imports.'
+              ? 'Snap or screenshot a chord chart and Claude reads it straight into a new song — chords landing over the right words, no key and no setup. (Add your own Claude key for unlimited imports.)'
               : 'Snap or screenshot a chart and it reads the chords for you. Add a Claude API key in Settings for the sharpest results, or it falls back to on-device OCR.'}
           </Feature>
           <Feature icon="music" title="Grid editor" go="add" onGo={onGo} action="Add a song">
