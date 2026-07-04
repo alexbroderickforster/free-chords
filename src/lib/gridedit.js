@@ -7,11 +7,20 @@
 let _seq = 0;
 export const newId = () => 'gl' + (++_seq);
 
-// The palette shown in the picker; type-to-filter + freeform cover everything else.
-export const DEFAULT_CHORDS = [
-  'C', 'Cmaj7', 'C7', 'Cadd9', 'D', 'Dm', 'D7', 'Dsus4', 'E', 'Em', 'E7',
-  'F', 'Fmaj7', 'G', 'G7', 'Gsus4', 'A', 'Am', 'A7', 'Asus4', 'B', 'Bm', 'B7',
+// The palette shown in the picker, grouped by root note A→G (natural, minor, 7th,
+// then one common variant) so it's quick to scan to a chord family. Type-to-filter
+// and freeform entry cover everything else.
+export const CHORD_GROUPS = [
+  { root: 'A', chords: ['A', 'Am', 'A7', 'Asus4'] },
+  { root: 'B', chords: ['B', 'Bm', 'B7', 'Bm7'] },
+  { root: 'C', chords: ['C', 'Cm', 'C7', 'Cadd9'] },
+  { root: 'D', chords: ['D', 'Dm', 'D7', 'Dsus4'] },
+  { root: 'E', chords: ['E', 'Em', 'E7'] },
+  { root: 'F', chords: ['F', 'Fm', 'Fmaj7'] },
+  { root: 'G', chords: ['G', 'Gm', 'G7', 'Gsus2'] },
 ];
+// Flat list (order preserved) for anything that just needs the set of chords.
+export const DEFAULT_CHORDS = CHORD_GROUPS.flatMap((g) => g.chords);
 
 const SECTION_RE = /^\{\s*(?:c|comment)\s*:\s*(.*?)\s*\}$/i;
 

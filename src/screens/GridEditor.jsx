@@ -6,7 +6,7 @@
 // lib/gridedit.js for the model ⇄ ChordPro round-trip.
 import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { Icon } from '../components/index.js';
-import { gridFromChordPro, gridToChordPro, shiftChords, usedChords, newId, rowToLine, DEFAULT_CHORDS } from '../lib/gridedit.js';
+import { gridFromChordPro, gridToChordPro, shiftChords, usedChords, newId, rowToLine, CHORD_GROUPS } from '../lib/gridedit.js';
 
 const CHIP_PAD = 5;  // .ge-chip left padding — subtract it so the label sits over the character
 const MAX_COL = 120; // furthest column a chord can be placed at (chords past the text pad with spaces)
@@ -216,9 +216,8 @@ export function GridEditor({ initialValue = '', onChange }) {
     const existing = lines[li].chords[ci];
     const q = pfilter.trim().toLowerCase();
     const rec = used.filter((c) => c.toLowerCase().startsWith(q));
-    const pal = DEFAULT_CHORDS.filter((c) => c.toLowerCase().startsWith(q));
     const rw = rootRef.current ? rootRef.current.clientWidth : 320;
-    const left = Math.max(0, Math.min(ci * chW, rw - 244));
+    const left = Math.max(0, Math.min(ci * chW, rw - 284));
     return (
       <div className="ge-pop" style={{ left: left + 'px' }} onMouseDown={(e) => e.stopPropagation()}>
         <input autoFocus className="ge-pop-filter ge-mono" placeholder="Type a chord" value={pfilter} spellCheck={false}
@@ -231,7 +230,18 @@ export function GridEditor({ initialValue = '', onChange }) {
           </>
         )}
         <div className="ge-pop-lbl">Chords</div>
-        <div className="ge-pop-grid">{pal.map((c) => <button key={c} type="button" className="ge-pop-chord" onClick={() => setChord(c)}>{c}</button>)}</div>
+        <div className="ge-pop-chords">
+          {CHORD_GROUPS.map((g) => {
+            const items = g.chords.filter((c) => c.toLowerCase().startsWith(q));
+            if (!items.length) return null;
+            return (
+              <div className="ge-pop-crow" key={g.root}>
+                <span className="ge-pop-croot">{g.root}</span>
+                {items.map((c) => <button key={c} type="button" className="ge-pop-chord" onClick={() => setChord(c)}>{c}</button>)}
+              </div>
+            );
+          })}
+        </div>
         {existing && <button type="button" className="ge-pop-remove" onClick={removeChord}><Icon n="trash-2" s={13} />Remove {existing}</button>}
       </div>
     );
