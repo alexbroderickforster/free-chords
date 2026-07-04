@@ -74,6 +74,9 @@ export function Guide({ firstRun = false, onGo, onDone, onFeedback }) {
           <Feature icon="graduation-cap" title="Training — ear trainer" go="training" onGo={onGo}>
             Hear two notes and name the interval. It drills the intervals you miss more often and tracks your accuracy over time.
           </Feature>
+          <Feature icon="music-4" title="Notation" go="notation" onGo={onGo}>
+            Write sheet music in your browser — click the staff or play the on-screen piano to place notes, hear it back, and export a PNG. Everything saves on your device.
+          </Feature>
           <Feature icon="audio-lines" title="Tuner" go="tuner" onGo={onGo}>
             Reference tones plus live mic tuning that locks onto each string. Set how tight "in tune" should be — perfect tuning never lasts.
           </Feature>

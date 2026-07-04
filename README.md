@@ -97,6 +97,16 @@ Hear two notes and **name the interval**. Choose the interval pool, direction
 intervals you miss more often and tracks **per-interval accuracy** over time.
 Keyboard shortcuts throughout.
 
+### Notation
+
+Write sheet music in the browser — a single treble staff in 4/4. Place notes by
+**clicking the staff** or playing the **on-screen piano** (or the computer
+keyboard); pick a **duration** (whole → 16th), add **dots**, **rests**, and
+**accidentals**; **select** a note to re-pitch or delete it. **Play it back**
+with a tempo and a moving playhead, **undo/redo**, and **export a PNG** or print.
+Scores save on your device. Rendering is [VexFlow](https://vexflow.com)
+(lazy-loaded so it never weighs down the rest of the app); playback is Web Audio.
+
 ### Tuner
 
 Reference tones for each string plus a microphone **Listen** mode with live
@@ -154,11 +164,12 @@ npm run preview  # preview the production build
 src/
   components/   design-system primitives (Button, Card, Tag, SideNav, …) + Icon
   screens/      Library, SongView, SongEdit, AddImport, GridEditor, Playlists,
-                Practice (A/B loops), Training (ear trainer), TunerView,
+                Practice (A/B loops), Training (ear trainer), Notation, TunerView,
                 Settings, Guide, TuningLab (experimental)
   lib/          music, chordpro (ChordSheetJS), gridedit (grid ⇄ ChordPro),
                 chords (chords-db), tuning (chord/tuning DSP), loop, imageImport
-                (Claude vision / OCR), songbookExport, feedback, storage, backup, sync
+                (Claude vision / OCR), score + scoreRender (VexFlow) + scorePlayback
+                + scoreExport, songbookExport, feedback, storage, backup, sync
   data/         sample songbook
   styles/       design tokens + app stylesheet
 public/         brand SVGs (mark + wordmark)

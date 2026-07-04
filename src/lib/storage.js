@@ -107,6 +107,18 @@ export function loadPlaylistDeletions() {
 }
 export function savePlaylistDeletions(d) { write('playlistDeletions', d); }
 
+// Notation scores: [{ id, title, tempo, notes:[…], createdAt, updatedAt }]. Default [].
+export function loadScores() {
+  const stored = read('scores', null);
+  return Array.isArray(stored) ? stored : [];
+}
+export function saveScores(v) { write('scores', v); }
+export function loadScoreDeletions() {
+  const stored = read('scoreDeletions', null);
+  return stored && typeof stored === 'object' ? stored : {};
+}
+export function saveScoreDeletions(d) { write('scoreDeletions', d); }
+
 // Saved practice loops: [{ id, name, kind, id/url/name, a, b, speed, preRoll, createdAt, updatedAt }]
 export function loadLoops() {
   const stored = read('loops', null);

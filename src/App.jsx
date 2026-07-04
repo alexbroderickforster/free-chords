@@ -11,11 +11,12 @@ import { Practice } from './screens/Practice.jsx';
 import { TunerView } from './screens/TunerView.jsx';
 import { TuningLab } from './screens/TuningLab.jsx';
 import { Training } from './screens/Training.jsx';
+import { Notation } from './screens/Notation.jsx';
 import { Guide } from './screens/Guide.jsx';
 import { SONGS, ALL_TAGS } from './data/songs.js';
 import { nextStatus } from './lib/music.js';
 import { Settings, SyncBadge } from './screens/Settings.jsx';
-import { loadSongs, saveSongs, loadTags, saveTags, loadTheme, saveTheme, loadThemeAt, saveThemeAt, loadPrefs, savePrefs, loadDeletions, saveDeletions, loadSyncOptIn, saveSyncOptIn, loadPlaylists, savePlaylists, loadPlaylistDeletions, savePlaylistDeletions, loadKeyPing, saveKeyPing, loadApiKey, saveApiKey, loadLoops, saveLoops, loadLoopDeletions, saveLoopDeletions, loadTuningMonitor, saveTuningMonitor, loadSeenGuide, saveSeenGuide } from './lib/storage.js';
+import { loadSongs, saveSongs, loadTags, saveTags, loadTheme, saveTheme, loadThemeAt, saveThemeAt, loadPrefs, savePrefs, loadDeletions, saveDeletions, loadSyncOptIn, saveSyncOptIn, loadPlaylists, savePlaylists, loadPlaylistDeletions, savePlaylistDeletions, loadKeyPing, saveKeyPing, loadApiKey, saveApiKey, loadLoops, saveLoops, loadLoopDeletions, saveLoopDeletions, loadTuningMonitor, saveTuningMonitor, loadSeenGuide, saveSeenGuide, loadScores, saveScores, loadScoreDeletions, saveScoreDeletions } from './lib/storage.js';
 import { exportSongbook, parseBackup } from './lib/backup.js';
 import { renderSongbookHtml, downloadHtml, openDoc } from './lib/songbookExport.js';
 import { isStandalone, isIos } from './lib/offline.js';
@@ -66,6 +67,8 @@ export function App() {
   const [playlistDeletions, setPlaylistDeletions] = useState(() => loadPlaylistDeletions());
   const [loops, setLoops] = useState(() => loadLoops());
   const [loopDeletions, setLoopDeletions] = useState(() => loadLoopDeletions());
+  const [scores, setScores] = useState(() => loadScores());
+  const [scoreDeletions, setScoreDeletions] = useState(() => loadScoreDeletions());
   const [addToPlaylistSong, setAddToPlaylistSong] = useState(null);
   const [playSession, setPlaySession] = useState(null); // { playlistId, index } — ephemeral, per-device
   const [keyPing, setKeyPing] = useState(() => loadKeyPing());
@@ -95,6 +98,8 @@ export function App() {
   useEffect(() => { savePlaylistDeletions(playlistDeletions); }, [playlistDeletions]);
   useEffect(() => { saveLoops(loops); }, [loops]);
   useEffect(() => { saveLoopDeletions(loopDeletions); }, [loopDeletions]);
+  useEffect(() => { saveScores(scores); }, [scores]);
+  useEffect(() => { saveScoreDeletions(scoreDeletions); }, [scoreDeletions]);
   useEffect(() => { saveKeyPing(keyPing); }, [keyPing]);
   useEffect(() => { saveTuningMonitor(tuningMonitor); }, [tuningMonitor]);
   useEffect(() => { saveApiKey(apiKey); }, [apiKey]);
@@ -230,6 +235,19 @@ export function App() {
   const deleteLoop = (id) => {
     setLoops((prev) => prev.filter((l) => l.id !== id));
     setLoopDeletions((prev) => ({ ...prev, [id]: Date.now() }));
+  };
+
+  // ---- Notation scores (synced like loops: LWW + tombstones) ----
+  const upsertScore = (sc) => {
+    setScores((prev) => {
+      const i = prev.findIndex((s) => s.id === sc.id);
+      if (i < 0) return [sc, ...prev];
+      const next = [...prev]; next[i] = sc; return next;
+    });
+  };
+  const deleteScore = (id) => {
+    setScores((prev) => prev.filter((s) => s.id !== id));
+    setScoreDeletions((prev) => ({ ...prev, [id]: Date.now() }));
   };
 
   const createPlaylist = (name) => {
@@ -459,6 +477,7 @@ export function App() {
     { value: 'playlists', label: 'Playlists', icon: <Icon n="list-music" s={22} /> },
     { value: 'practice', label: 'Practice', icon: <Icon n="repeat" s={22} /> },
     { value: 'training', label: 'Training', icon: <Icon n="graduation-cap" s={22} /> },
+    { value: 'notation', label: 'Notation', icon: <Icon n="music-4" s={22} /> },
     { value: 'tuner', label: 'Tuner', icon: <Icon n="audio-lines" s={22} /> },
     { value: 'guide', label: 'Guide', icon: <Icon n="book-open" s={22} /> },
     { value: 'settings', label: 'Settings', icon: <Icon n="settings" s={22} /> },
@@ -515,6 +534,7 @@ export function App() {
         {tab === 'add' && <AddImport onBack={() => setTab('songs')} knownTags={knownTags} artistOptions={artistOptions} albumOptions={albumOptions} apiKey={apiKey} onSaveApiKey={setApiKey} onSave={addSong} />}
         {tab === 'practice' && <Practice loops={loops} onSaveLoop={saveLoop} onDeleteLoop={deleteLoop} initialLoop={initialLoop} />}
         {tab === 'training' && <Training />}
+        {tab === 'notation' && <Notation scores={scores} onUpsertScore={upsertScore} onDeleteScore={deleteScore} onToast={setToast} />}
         {tab === 'guide' && <Guide firstRun={!seenGuide} onGo={goTab} onFeedback={openFeedback} onDone={() => { if (!seenGuide) { setSeenGuide(true); saveSeenGuide(true); } goTab('songs'); }} />}
         {tab === 'tuner' && <TunerView />}
         {tab === 'tuninglab' && <TuningLab onBack={() => setTab('settings')} />}

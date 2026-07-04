@@ -8,7 +8,7 @@ import {
   ListMusic, SkipBack, SkipForward, ChevronUp, ChevronDown, Ear,
   Image as ImageIcon, KeyRound, Printer, FileDown, WifiOff, Settings as SettingsIcon,
   Repeat, Share2, Bookmark, Turtle, Rabbit, Clock, GraduationCap, Circle, Square, BookOpen, Sparkles,
-  MessageSquare, Send, MapPin,
+  MessageSquare, Send, MapPin, Music4,
 } from 'lucide-react';
 
 const ICONS = {
@@ -65,6 +65,7 @@ const ICONS = {
   'message-square': MessageSquare,
   'send': Send,
   'map-pin': MapPin,
+  'music-4': Music4,
 };
 
 export function Icon({ n, s = 20, cls, ...rest }) {
