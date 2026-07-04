@@ -123,7 +123,12 @@ export default {
         },
         body: JSON.stringify({
           model: env.MODEL || 'claude-sonnet-5',
-          max_tokens: 4096,
+          max_tokens: 8192,
+          // Transcription needs no reasoning. Sonnet 5 thinks by default (effort
+          // high) and on a dense page burns the whole token budget thinking and
+          // never emits text — so turn thinking off. Keep this in sync with
+          // src/lib/imageImport.js.
+          thinking: { type: 'disabled' },
           messages: [{
             role: 'user',
             content: [

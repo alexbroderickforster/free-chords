@@ -116,7 +116,11 @@ async function callClaude({ base64, mediaType, apiKey }) {
       },
       body: JSON.stringify({
         model: MODEL,
-        max_tokens: 4096,
+        max_tokens: 8192,
+        // Transcription needs no reasoning. Sonnet 5 thinks by default and on a
+        // dense page spends the whole token budget thinking, emitting no text —
+        // so turn thinking off. Keep in sync with worker/src/worker.js.
+        thinking: { type: 'disabled' },
         messages: [{
           role: 'user',
           content: [
