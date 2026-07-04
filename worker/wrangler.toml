@@ -1,0 +1,28 @@
+# FreeChords image-import proxy — Cloudflare Worker config.
+# Deploy: see docs/shared-key-setup.md. Quick version:
+#   cd worker
+#   npm i -g wrangler && wrangler login
+#   wrangler kv namespace create LIMITS      # paste the id below, uncomment the block
+#   wrangler secret put ANTHROPIC_API_KEY    # paste the workspace-scoped key
+#   wrangler deploy                          # prints the https URL → VITE_IMAGE_PROXY_URL
+
+name = "freechords-image-proxy"
+main = "src/worker.js"
+compatibility_date = "2024-11-01"
+
+[vars]
+# The model the shared pool uses (kept cheap-ish; quality-first is claude-sonnet-5).
+MODEL = "claude-sonnet-5"
+# Comma-separated origins allowed to call the proxy (courtesy gate, not security).
+ALLOWED_ORIGINS = "https://freechords.app,http://localhost:5173,http://localhost:4173"
+# Soft throttles so the $10 pool lasts and one person can't drain it.
+DAILY_MAX = "200"
+IP_DAILY_MAX = "25"
+
+# Rate-limit counters. Create the namespace, then paste its id and uncomment:
+# [[kv_namespaces]]
+# binding = "LIMITS"
+# id = "PASTE_KV_NAMESPACE_ID_HERE"
+
+# ANTHROPIC_API_KEY is a SECRET — never put it here. Set it with:
+#   wrangler secret put ANTHROPIC_API_KEY

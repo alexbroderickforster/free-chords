@@ -1,19 +1,24 @@
 // Image import — turn a screenshot of a chord sheet into an editable song.
 //
-// Primary path: Claude vision (claude-opus-4-8). It understands chords sitting
-// *above* lyrics and returns clean ChordPro directly — no fragile column math.
-// The call goes straight from the browser to the Anthropic API with the user's
-// own key (stored on-device); no backend. We use a direct fetch rather than
-// pulling the whole SDK into this deliberately-lean PWA bundle.
-//
-// Fallback path (no key set): on-device OCR via Tesseract.js, loaded from a CDN
-// only when actually needed. OCR reads text linearly, so chord-over-lyric
-// alignment comes out rough — hence the primary path.
+// Three paths, in priority order:
+// 1. User's OWN key set → Claude vision, browser-direct to the Anthropic API
+//    (their key, their spend). Understands chords sitting *above* lyrics and
+//    returns clean ChordPro directly — no fragile column math.
+// 2. No key, but a SHARED reader is configured (VITE_IMAGE_PROXY_URL) → the same
+//    Claude vision, but via a proxy that holds the owner's key server-side and
+//    rate-limits it (see worker/ + docs/shared-key-setup.md). If the shared pool
+//    is used up, we fall through to OCR.
+// 3. Otherwise → on-device OCR via Tesseract.js, loaded from a CDN only when
+//    needed. OCR reads text linearly, so chord-over-lyric alignment is rough.
 import { cleanToChordPro } from './chordpro.js';
 import { isMostlyTab } from './tab.js';
 
 const API_URL = 'https://api.anthropic.com/v1/messages';
 const MODEL = 'claude-sonnet-5';
+// Optional shared-reader proxy. When set, screenshots work with no key of your
+// own (subject to the proxy's rate limits). Inert until configured at build time.
+const PROXY_URL = import.meta.env.VITE_IMAGE_PROXY_URL || '';
+export const hasSharedReader = !!PROXY_URL;
 
 const PROMPT = `You are given an image of a song's chord sheet (chords positioned above the lyrics), or possibly guitar tablature. Transcribe it faithfully.
 
@@ -122,6 +127,37 @@ async function callClaude({ base64, mediaType, apiKey }) {
   return text;
 }
 
+// Shared-reader path: POST the image to the proxy, which holds the owner's key
+// and calls Claude. A 429 means the shared pool is spent/limited — we throw a
+// tagged error so the orchestrator can fall back to OCR gracefully.
+async function callProxy({ base64, mediaType }) {
+  let res;
+  try {
+    res = await fetch(PROXY_URL, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ image: base64, mediaType }),
+    });
+  } catch {
+    throw new Error('Couldn’t reach the image reader — check your connection and try again.');
+  }
+  if (res.status === 429 || res.status === 402) {
+    const e = new Error('Shared reader is at its limit.');
+    e.code = 'quota';
+    throw e;
+  }
+  if (!res.ok) {
+    let detail = '';
+    try { const j = await res.json(); detail = (j && (j.error || j.message)) || ''; } catch { /* ignore */ }
+    throw new Error(detail || `Image reader failed (${res.status}).`);
+  }
+  let data;
+  try { data = await res.json(); } catch { data = null; }
+  const text = (data && typeof data.text === 'string') ? data.text.trim() : '';
+  if (!text) throw new Error('The image reader returned an empty result — try again.');
+  return text;
+}
+
 // Tolerant parse of the model's reply into our normalized shape. Exported so the
 // parsing can be unit-tested without a network call.
 export function parseClaudeResult(text) {
@@ -188,6 +224,7 @@ export async function extractSongFromImage({ file, apiKey, onStatus }) {
 
   const key = (apiKey || '').trim();
   if (key) {
+    // 1. User's own key → browser-direct.
     if (onStatus) onStatus('claude');
     const reply = await callClaude({ base64: img.base64, mediaType: img.mediaType, apiKey: key });
     const r = parseClaudeResult(reply);
@@ -195,11 +232,27 @@ export async function extractSongFromImage({ file, apiKey, onStatus }) {
     return { method: 'claude', format: r.format, title: r.title, artist: r.artist, key: r.key, capo: r.capo, chordpro, rawText: chordpro };
   }
 
-  // No key → on-device OCR.
+  // 2. No key, but a shared reader is configured → via the proxy. If the pool is
+  //    spent (tagged 'quota'), fall through to OCR; surface any other error.
+  let sharedQuotaHit = false;
+  if (PROXY_URL) {
+    if (onStatus) onStatus('claude');
+    try {
+      const reply = await callProxy({ base64: img.base64, mediaType: img.mediaType });
+      const r = parseClaudeResult(reply);
+      const chordpro = r.content || '';
+      return { method: 'shared', format: r.format, title: r.title, artist: r.artist, key: r.key, capo: r.capo, chordpro, rawText: chordpro };
+    } catch (e) {
+      if (e && e.code === 'quota') sharedQuotaHit = true;
+      else throw e;
+    }
+  }
+
+  // 3. On-device OCR (no key, no proxy, or the shared pool is used up).
   if (onStatus) onStatus('ocr', 0);
   const text = await runOcr(img.dataUrl, onStatus);
   if (!text.trim()) throw new Error('Couldn’t read any text from that image. Try a sharper screenshot, or add a Claude API key for far better results.');
   const format = isMostlyTab(text) ? 'tab' : 'chordpro';
   const chordpro = format === 'tab' ? text : cleanToChordPro(text);
-  return { method: 'ocr', format, title: '', artist: '', key: '', capo: 0, chordpro, rawText: text };
+  return { method: 'ocr', sharedQuotaHit, format, title: '', artist: '', key: '', capo: 0, chordpro, rawText: text };
 }

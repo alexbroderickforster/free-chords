@@ -2,6 +2,7 @@
 // reachable any time from the nav. Keep it in sync as features are added.
 import React from 'react';
 import { Icon } from '../components/index.js';
+import { hasSharedReader } from '../lib/imageImport.js';
 
 function Feature({ icon, title, go, onGo, action, children }) {
   return (
@@ -35,7 +36,9 @@ export function Guide({ firstRun = false, onGo, onDone, onFeedback }) {
             Copy a chord sheet from anywhere and paste it — FreeChords lines the chords up over the lyrics automatically.
           </Feature>
           <Feature icon="image" title="Upload a screenshot" go="add" onGo={onGo} action="Add a song">
-            Snap or screenshot a chart and it reads the chords for you. Add a Claude API key in Settings for the sharpest results, or it falls back to on-device OCR.
+            {hasSharedReader
+              ? 'Snap or screenshot a chart and Claude reads the chords for you — no setup needed. Add your own key for unlimited imports.'
+              : 'Snap or screenshot a chart and it reads the chords for you. Add a Claude API key in Settings for the sharpest results, or it falls back to on-device OCR.'}
           </Feature>
           <Feature icon="music" title="Grid editor" go="add" onGo={onGo} action="Add a song">
             Prefer to build it yourself? Type or paste your lyrics, then click above any word to drop a chord — drag it to nudge, or leave a line lyric-less for an intro.

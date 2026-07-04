@@ -47,9 +47,10 @@ the first load).
   - **Paste** raw chords copied from a webpage — they're auto-aligned into
     chords-over-lyrics (ChordPro), with a live preview and detected-chord chips.
     Handles PDF/OCR-flattened pastes (where the columns are lost) gracefully.
-  - **Upload a screenshot** — reads the chart with **Claude vision** (using your
-    own API key, set in Settings; the call goes browser-direct, no backend) or
-    falls back to on-device **OCR** when no key is set.
+  - **Upload a screenshot** — reads the chart with **Claude vision**: your own
+    API key (browser-direct, no backend), or an optional **shared reader** the
+    owner can enable so it works with no key of your own (see **Shared image
+    import** below), falling back to on-device **OCR** otherwise.
   - **Grid editor** — type or paste lyrics, then click above any word to drop a
     chord from a type-to-filter picker; drag a chord to nudge it, place chords on
     lyric-less lines (intros/turnarounds), and bulk-paste a whole verse. Round-
@@ -160,6 +161,7 @@ src/
   data/         sample songbook
   styles/       design tokens + app stylesheet
 public/         brand SVGs (mark + wordmark)
+worker/         optional Cloudflare Worker: shared image-import proxy (holds the key)
 ```
 
 ## Status & roadmap
@@ -187,6 +189,19 @@ and stays out of the way until you wire it up: set `VITE_FEEDBACK_URL` to your
 Apps Script `/exec` URL (locally in `.env`, or as a GitHub **Actions variable**
 for deploys). Full walkthrough — including the ~15-line script — in
 [`docs/feedback-setup.md`](docs/feedback-setup.md).
+
+## Shared image import (optional)
+
+By default, screenshot import uses each person's own Claude key (or on-device OCR
+with none). If you'd rather let a group of testers import screenshots **without**
+each bringing a key, you can run a shared reader: a tiny **Cloudflare Worker**
+(in [`worker/`](worker)) holds *your* key server-side so it never ships to the
+browser, and rate-limits it. Spend is **hard-capped Anthropic-side** — $10 of
+prepaid credits with auto-reload off, plus a dedicated workspace spend limit — so
+the app can't run up a surprise bill; when the pool's spent, import falls back to
+OCR / bring-your-own-key. Enable it by setting `VITE_IMAGE_PROXY_URL` to the
+Worker URL. Full setup — money cap, Worker deploy, and operation — in
+[`docs/shared-key-setup.md`](docs/shared-key-setup.md).
 
 ## Cross-device sync (optional)
 
