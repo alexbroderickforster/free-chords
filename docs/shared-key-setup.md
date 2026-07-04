@@ -19,8 +19,13 @@ auto-reload off. Everything else makes the pool last and keeps the key private.
 2. **Dedicated workspace + spend limit** (belt and braces). **Settings →
    Workspaces → Create** (e.g. "FreeChords shared" — *not* the Default
    workspace). Open it → **Limits → set a monthly spend limit of $10** (this is
-   the "Change Limit" dollar cap, *not* a spend "notification"). Optionally set a
-   low rate limit too.
+   the "Change Limit" dollar cap, *not* a spend "notification").
+   - **Rate limit (recommended):** on the same Limits page, set **Claude Sonnet 5
+     → Requests per Minute to ~20–30**. Server-enforced and unbypassable, this is
+     the burst throttle we skip on the Worker (no KV) — it stops a bug or a
+     scripted call from draining the whole $10 in one burst and locking testers
+     out. Plenty for a small tester group; leave the token-per-minute limits at
+     default, and ignore the other models (the proxy only calls Sonnet 5).
 3. **Make the key inside that workspace.** In the workspace, **API keys → Create
    key**. Copy it. Because it's scoped to the workspace, it can never spend past
    that workspace's $10/month, and your other work is unaffected.
