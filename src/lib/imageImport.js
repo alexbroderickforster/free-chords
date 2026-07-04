@@ -148,7 +148,10 @@ async function callClaude({ base64, mediaType, apiKey }) {
     .map((b) => b.text)
     .join('')
     .trim();
-  if (!text) throw retryable(new Error(EMPTY_MSG));
+  if (!text) {
+    const diag = ` [diagnostic — stop_reason: ${data && data.stop_reason}; blocks: ${((data && data.content) || []).map((b) => b && b.type).join(',') || 'none'}; output_tokens: ${data && data.usage && data.usage.output_tokens}]`;
+    throw retryable(new Error(EMPTY_MSG + diag));
+  }
   return text;
 }
 
@@ -172,12 +175,16 @@ async function callProxy({ base64, mediaType }) {
     throw e;
   }
   if (!res.ok) {
-    let detail = '';
-    try { const j = await res.json(); detail = (j && (j.error || j.message)) || ''; } catch { /* ignore */ }
+    let detail = '', diag = '';
+    try {
+      const j = await res.json();
+      detail = (j && (j.error || j.message)) || '';
+      if (j && j.stop_reason) diag = ` [diagnostic — stop_reason: ${j.stop_reason}; blocks: ${(j.blocks || []).join(',') || 'none'}; output_tokens: ${j.output_tokens}]`;
+    } catch { /* ignore */ }
     // The proxy reports an empty completion as a 5xx with an "empty" message —
     // surface the actionable crop guidance instead of the raw text.
     const msg = /empty/i.test(detail) ? EMPTY_MSG : (detail || `Image reader failed (${res.status}).`);
-    throw retryable(new Error(msg));
+    throw retryable(new Error(msg + diag));
   }
   let data;
   try { data = await res.json(); } catch { data = null; }

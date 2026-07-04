@@ -157,7 +157,14 @@ export default {
       .map((b) => b.text)
       .join('')
       .trim();
-    if (!text) return json({ error: 'Claude returned an empty result.' }, 502, cors);
+    if (!text) return json({
+      error: 'Claude returned an empty result.',
+      // Diagnostic (temporary): why was it empty? stop_reason distinguishes a
+      // soft content decline (end_turn, 0 tokens) from truncation (max_tokens).
+      stop_reason: (data && data.stop_reason) || null,
+      blocks: ((data && data.content) || []).map((b) => b && b.type),
+      output_tokens: (data && data.usage && data.usage.output_tokens != null) ? data.usage.output_tokens : null,
+    }, 502, cors);
     return json({ text }, 200, cors);
   },
 };
