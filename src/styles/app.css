@@ -884,6 +884,12 @@ body {
 .sv-recbar-stop { background: var(--danger); color: #fff; }
 .sv-recbar-go { background: var(--accent); color: var(--ink-on-accent); }
 .sv-recbar-go:hover { background: var(--accent-hover); }
+/* Pre-record 3-2-1 count-in overlay */
+.sv-countin { position: absolute; inset: 0; z-index: 9; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; pointer-events: none; background: color-mix(in oklab, var(--bg) 55%, transparent); }
+.sv-countin-num { font-family: var(--font-mono); font-weight: 700; font-size: clamp(90px, 22vw, 200px); line-height: 1; color: var(--danger); animation: sv-countin-pop .6s ease; }
+.sv-countin-lbl { font-family: var(--font-sans); font-weight: 600; font-size: var(--text-md); color: var(--ink-soft); letter-spacing: .02em; }
+@keyframes sv-countin-pop { 0% { transform: scale(.55); opacity: 0; } 30% { opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .sv-countin-num { animation: none; } }
 
 /* ---- Toast ---- */
 .app-toast {

@@ -61,7 +61,8 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
   const [recTime, setRecTime] = useState(0);          // elapsed seconds while recording
   const [recTake, setRecTake] = useState(null);       // { url, blob, ext, seconds } finished take
   const [recError, setRecError] = useState('');
-  const recRef = useRef(null), recStream = useRef(null), recChunks = useRef([]), recTimer = useRef(null), recStart = useRef(0), recGen = useRef(0);
+  const [countIn, setCountIn] = useState(null);       // 3 | 2 | 1 during the pre-record count-in, else null
+  const recRef = useRef(null), recStream = useRef(null), recChunks = useRef([]), recTimer = useRef(null), recStart = useRef(0), recGen = useRef(0), recCountTimer = useRef(null);
   // The scroll RAF loop must call the CURRENT playlist callbacks without being
   // in its deps (that would restart the loop and stutter). Read them via a ref.
   const latest = useRef({});
@@ -153,8 +154,11 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
     }
     return '';
   };
+  const clickBeat = () => { try { ensureAudio(); metroClick(actx.current.currentTime + 0.02, false); } catch { /* audio unavailable */ } };
+  // Secure the mic (may prompt), then run a 3-2-1 count-in so you can get your
+  // hands ready, then actually start recording + the play-along scroll.
   const startRecording = async () => {
-    if (recording) return;
+    if (recording || countIn != null) return;
     setRecError('');
     if (recTake) setRecTake(null); // drop a prior take (its URL is freed by the [recTake] cleanup effect)
     const mime = recMime();
@@ -164,35 +168,50 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
       const ms = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
       if (g !== recGen.current) { ms.getTracks().forEach((t) => t.stop()); return; } // aborted while acquiring — kill the late stream, touch no state
       recStream.current = ms;
-      const ext = mime.includes('webm') ? 'webm' : mime.includes('mp4') ? 'm4a' : mime.includes('ogg') ? 'ogg' : 'webm';
-      const rec = new MediaRecorder(ms, mime ? { mimeType: mime } : undefined);
-      recChunks.current = [];
-      rec.ondataavailable = (e) => { if (e.data && e.data.size) recChunks.current.push(e.data); };
-      rec.onstop = () => {
-        const blob = new Blob(recChunks.current, { type: mime || 'audio/webm' });
-        const seconds = Math.round((performance.now() - recStart.current) / 1000);
-        setRecTake({ url: URL.createObjectURL(blob), blob, ext, seconds });
-        if (recStream.current) { recStream.current.getTracks().forEach((t) => t.stop()); recStream.current = null; }
-      };
-      recRef.current = rec;
-      rec.start();
-      recStart.current = performance.now();
-      setRecTime(0); setRecording(true);
-      recTimer.current = setInterval(() => setRecTime(Math.floor((performance.now() - recStart.current) / 1000)), 250);
-      // Play-along: scroll from the top while recording.
-      const sc = scRef.current; if (sc) { sc.scrollTop = 0; endedRef.current = false; }
-      setPlaying(true);
+      // Count-in at (roughly) the song's tempo: 3 · 2 · 1 · go.
+      const beatMs = Math.max(400, Math.min(1000, 60000 / metroBpmRef.current));
+      let n = 3;
+      setCountIn(3); clickBeat();
+      recCountTimer.current = setInterval(() => {
+        if (g !== recGen.current) { clearInterval(recCountTimer.current); recCountTimer.current = null; setCountIn(null); return; } // stopped mid-count
+        n -= 1;
+        if (n <= 0) { clearInterval(recCountTimer.current); recCountTimer.current = null; setCountIn(null); beginRecording(g, ms, mime); return; }
+        setCountIn(n); clickBeat();
+      }, beatMs);
     } catch {
       if (g !== recGen.current) return; // stale rejection — stay silent
       setRecError('Mic access is blocked — allow it to record a scratch take.');
       if (recStream.current) { recStream.current.getTracks().forEach((t) => t.stop()); recStream.current = null; }
     }
   };
+  const beginRecording = (g, ms, mime) => {
+    if (g !== recGen.current) { ms.getTracks().forEach((t) => t.stop()); return; } // stopped during the count-in
+    const ext = mime.includes('webm') ? 'webm' : mime.includes('mp4') ? 'm4a' : mime.includes('ogg') ? 'ogg' : 'webm';
+    const rec = new MediaRecorder(ms, mime ? { mimeType: mime } : undefined);
+    recChunks.current = [];
+    rec.ondataavailable = (e) => { if (e.data && e.data.size) recChunks.current.push(e.data); };
+    rec.onstop = () => {
+      const blob = new Blob(recChunks.current, { type: mime || 'audio/webm' });
+      const seconds = Math.round((performance.now() - recStart.current) / 1000);
+      setRecTake({ url: URL.createObjectURL(blob), blob, ext, seconds });
+      if (recStream.current) { recStream.current.getTracks().forEach((t) => t.stop()); recStream.current = null; }
+    };
+    recRef.current = rec;
+    rec.start();
+    recStart.current = performance.now();
+    setRecTime(0); setRecording(true);
+    recTimer.current = setInterval(() => setRecTime(Math.floor((performance.now() - recStart.current) / 1000)), 250);
+    // Play-along: scroll from the top while recording.
+    const sc = scRef.current; if (sc) { sc.scrollTop = 0; endedRef.current = false; }
+    setPlaying(true);
+  };
   const stopRecording = () => {
-    recGen.current++; // invalidate any still-pending start
+    recGen.current++; // invalidate any still-pending start / count-in
+    if (recCountTimer.current) { clearInterval(recCountTimer.current); recCountTimer.current = null; }
     if (recTimer.current) { clearInterval(recTimer.current); recTimer.current = null; }
-    setRecording(false); setPlaying(false);
-    try { if (recRef.current && recRef.current.state !== 'inactive') recRef.current.stop(); } catch { /* ignore */ }
+    setCountIn(null); setRecording(false); setPlaying(false);
+    if (recRef.current && recRef.current.state !== 'inactive') { try { recRef.current.stop(); } catch { /* ignore */ } } // onstop builds the take + stops the stream
+    else if (recStream.current) { recStream.current.getTracks().forEach((t) => t.stop()); recStream.current = null; } // cancelled during count-in — no take
     recRef.current = null;
   };
   const recFileName = () => {
@@ -220,6 +239,7 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
   // Tear down an in-progress recording WITHOUT producing a take (song change / unmount).
   const abortRecording = () => {
     recGen.current++; // invalidate any getUserMedia still in flight (refs may still be null)
+    if (recCountTimer.current) { clearInterval(recCountTimer.current); recCountTimer.current = null; }
     if (recTimer.current) { clearInterval(recTimer.current); recTimer.current = null; }
     if (recRef.current) { recRef.current.onstop = null; try { if (recRef.current.state !== 'inactive') recRef.current.stop(); } catch { /* ignore */ } recRef.current = null; }
     if (recStream.current) { recStream.current.getTracks().forEach((t) => t.stop()); recStream.current = null; }
@@ -289,7 +309,7 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
     if (fadeRef.current) { clearTimeout(fadeRef.current); fadeRef.current = null; }
     setLeaving(false); // the new song fades in fresh
     spreads.current = []; setTuningNudge(false); // fresh tuning read per song
-    abortRecording(); setRecording(false); setRecError(''); setRecTime(0);
+    abortRecording(); setRecording(false); setCountIn(null); setRecError(''); setRecTime(0);
     setRecTake(null); // fresh recorder per song (URL freed by the [recTake] cleanup effect)
     setTagEditing(false); setTagDraft('');
     setCapo(song.capo || 0);
@@ -706,6 +726,12 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
           <button className="sv-tunebar-x" aria-label="Discard take" onClick={discardTake}><Icon n="x" s={14} /></button>
         </div>
       )}
+      {countIn != null && (
+        <div className="sv-countin" aria-live="assertive" aria-label={`Recording in ${countIn}`}>
+          <span key={countIn} className="sv-countin-num">{countIn}</span>
+          <span className="sv-countin-lbl">Get ready…</span>
+        </div>
+      )}
 
       <div className="sv-dock">
         <button className="sv-ghost" aria-label="Back to start" onClick={() => scRef.current && scRef.current.scrollTo({ top: 0, behavior: 'smooth' })}><Icon n="rotate-ccw" s={20} /></button>
@@ -740,9 +766,9 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
             title="Tuning check — listens while you play and flags if the guitar drifts out of tune"
             onClick={() => onSetTuningMonitor(!tuningMonitor)}><Icon n="mic" s={20} /></button>
         )}
-        <button className={'sv-metro sv-rec' + (recording ? ' is-rec' : '')} aria-label={recording ? 'Stop recording' : 'Record a scratch take'} aria-pressed={recording}
-          title={recording ? 'Stop recording' : 'Record yourself playing along — saves an audio file'}
-          onClick={() => (recording ? stopRecording() : startRecording())}><Icon n={recording ? 'square' : 'circle'} s={recording ? 15 : 18} /></button>
+        <button className={'sv-metro sv-rec' + (recording || countIn != null ? ' is-rec' : '')} aria-label={recording || countIn != null ? 'Stop recording' : 'Record a scratch take'} aria-pressed={recording || countIn != null}
+          title={recording || countIn != null ? 'Stop recording' : 'Record yourself playing along — saves an audio file'}
+          onClick={() => (recording || countIn != null ? stopRecording() : startRecording())}><Icon n={recording || countIn != null ? 'square' : 'circle'} s={recording || countIn != null ? 15 : 18} /></button>
       </div>
 
       <div className="sv-chordpop" ref={popRef}></div>
