@@ -106,6 +106,10 @@ Relaxed).
 
 - **Guide.** A built-in intro/feature tour that opens on first launch and is
   reachable from the nav any time.
+- **Feedback.** A one-tap **Feedback** button (bottom-right on mobile, in the
+  sidebar on desktop, and in the Guide) that auto-attaches which screen you're on
+  and sends bugs, ideas, and requests straight to a Google Sheet you own —
+  optional, self-owned, no backend, and it queues offline. See **Feedback** below.
 - **Responsive** — sidebar on desktop, bottom tab bar on mobile — with a warm
   light and low-light dark mode.
 - **Installable PWA** that runs **fully offline** (app shell and fonts are
@@ -152,7 +156,7 @@ src/
                 Settings, Guide, TuningLab (experimental)
   lib/          music, chordpro (ChordSheetJS), gridedit (grid ⇄ ChordPro),
                 chords (chords-db), tuning (chord/tuning DSP), loop, imageImport
-                (Claude vision / OCR), songbookExport, storage, backup, sync
+                (Claude vision / OCR), songbookExport, feedback, storage, backup, sync
   data/         sample songbook
   styles/       design tokens + app stylesheet
 public/         brand SVGs (mark + wordmark)
@@ -172,6 +176,17 @@ To **install on a phone or tablet**, the app needs to be served over HTTPS
 (install/offline is allowed on `https://…` or `localhost`). Any free static
 host — Netlify, Vercel, GitHub Pages — works; build with `npm run build` and
 deploy the `dist/` folder.
+
+## Feedback (optional)
+
+The in-app **Feedback** button lets testers send bugs, ideas, and requests in one
+tap, with the current screen (and song) auto-attached. Submissions post to a
+Google Sheet **you** own via a tiny Google Apps Script — no third-party service,
+no backend, and notes queue on-device if they're offline. It's hidden-cost-free
+and stays out of the way until you wire it up: set `VITE_FEEDBACK_URL` to your
+Apps Script `/exec` URL (locally in `.env`, or as a GitHub **Actions variable**
+for deploys). Full walkthrough — including the ~15-line script — in
+[`docs/feedback-setup.md`](docs/feedback-setup.md).
 
 ## Cross-device sync (optional)
 

@@ -16,7 +16,7 @@ function Feature({ icon, title, go, onGo, action, children }) {
   );
 }
 
-export function Guide({ firstRun = false, onGo, onDone }) {
+export function Guide({ firstRun = false, onGo, onDone, onFeedback }) {
   return (
     <div className="screen guide">
       <div className="screen-head">
@@ -86,6 +86,7 @@ export function Guide({ firstRun = false, onGo, onDone }) {
           <div>
             <div className="guide-card-h">You're testing an early build</div>
             <p className="guide-card-p">Everything lives on your device — no account, no ads, nothing leaves your phone unless you choose to sync or share. Poke around, break things, and note anything that feels off or missing. New feature ideas are very welcome.</p>
+            {onFeedback && <button className="guide-try" onClick={onFeedback}><Icon n="message-square" s={14} />Send feedback</button>}
           </div>
         </div>
       </section>

@@ -1,7 +1,7 @@
 // FreeChords app shell — responsive: left sidebar on web/desktop,
 // bottom tab bar on mobile. Ties the screens together.
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { TabBar, SideNav, IconButton, Button, Icon, Credit } from './components/index.js';
+import { TabBar, SideNav, IconButton, Button, Icon, Credit, FeedbackFab, FeedbackModal } from './components/index.js';
 import { SongView } from './screens/SongView.jsx';
 import { SongEdit } from './screens/SongEdit.jsx';
 import { Library } from './screens/Library.jsx';
@@ -20,6 +20,7 @@ import { exportSongbook, parseBackup } from './lib/backup.js';
 import { renderSongbookHtml, downloadHtml, openDoc } from './lib/songbookExport.js';
 import { isStandalone, isIos } from './lib/offline.js';
 import { paramsToLoop } from './lib/loop.js';
+import { flushFeedbackQueue } from './lib/feedback.js';
 import { isConfigured as syncConfigured, fullSync, push as syncPush, disconnect as syncDisconnect, warmUp as warmUpSync } from './lib/sync.js';
 import './styles/app.css';
 
@@ -77,6 +78,7 @@ export function App() {
   const [syncError, setSyncError] = useState(''); // human-readable reason, shown persistently
   const [themeAt, setThemeAt] = useState(() => loadThemeAt());
   const [lastSyncedAt, setLastSyncedAt] = useState(0);
+  const [fbOpen, setFbOpen] = useState(false);
 
   useEffect(() => {
     document.documentElement.dataset.theme = dark ? 'dark' : 'light';
@@ -117,6 +119,15 @@ export function App() {
       setTab('practice');
       try { window.history.replaceState(null, '', import.meta.env.BASE_URL); } catch { /* ignore */ }
     }
+  }, []);
+
+  // Deliver any feedback that was queued offline (or before the endpoint existed):
+  // once on load, and again whenever the network returns.
+  useEffect(() => {
+    flushFeedbackQueue();
+    const onOnline = () => flushFeedbackQueue();
+    window.addEventListener('online', onOnline);
+    return () => window.removeEventListener('online', onOnline);
   }, []);
 
   const promptInstall = async () => {
@@ -484,6 +495,15 @@ export function App() {
     isLast: playSession.index + 1 >= plList.length,
   } : null;
 
+  // Where the user is right now — attached to any feedback they send so a report
+  // arrives with the screen (and song) it came from.
+  const TAB_LABELS = { songs: 'Songs', playlists: 'Playlists', add: 'Add a song', practice: 'Practice', training: 'Training', tuner: 'Tuner', guide: 'Guide', settings: 'Settings', tuninglab: 'Tuning lab' };
+  const feedbackContext = {
+    page: song ? (editing ? `Editing “${song.title}”` : `“${song.title}”`) : (TAB_LABELS[tab] || tab),
+    song: song ? song.title : '',
+  };
+  const openFeedback = () => setFbOpen(true);
+
   const screen = (song && editing)
     ? <SongEdit song={song} knownTags={knownTags} artistOptions={artistOptions} albumOptions={albumOptions} onSave={saveEdit} onCancel={() => setEditing(false)} onDelete={deleteSong} />
     : song
@@ -495,7 +515,7 @@ export function App() {
         {tab === 'add' && <AddImport onBack={() => setTab('songs')} knownTags={knownTags} artistOptions={artistOptions} albumOptions={albumOptions} apiKey={apiKey} onSaveApiKey={setApiKey} onSave={addSong} />}
         {tab === 'practice' && <Practice loops={loops} onSaveLoop={saveLoop} onDeleteLoop={deleteLoop} initialLoop={initialLoop} />}
         {tab === 'training' && <Training />}
-        {tab === 'guide' && <Guide firstRun={!seenGuide} onGo={goTab} onDone={() => { if (!seenGuide) { setSeenGuide(true); saveSeenGuide(true); } goTab('songs'); }} />}
+        {tab === 'guide' && <Guide firstRun={!seenGuide} onGo={goTab} onFeedback={openFeedback} onDone={() => { if (!seenGuide) { setSeenGuide(true); saveSeenGuide(true); } goTab('songs'); }} />}
         {tab === 'tuner' && <TunerView />}
         {tab === 'tuninglab' && <TuningLab onBack={() => setTab('settings')} />}
         {tab === 'settings' && <Settings {...backupProps} dark={dark} onToggleTheme={toggleTheme} onOpenLab={() => setTab('tuninglab')} />}
@@ -513,6 +533,9 @@ export function App() {
         footer={
           <>
             <SyncBadge syncConfigured={syncConfigured()} syncOn={syncOn} syncStatus={syncStatus} onOpen={() => goTab('settings')} />
+            <Button variant="ghost" block iconLeft={<Icon n="message-square" s={18} />} onClick={openFeedback}>
+              Send feedback
+            </Button>
             <Button variant="ghost" block iconLeft={<Icon n={dark ? 'sun' : 'moon'} s={18} />} onClick={toggleTheme}>
               {dark ? 'Light mode' : 'Dark mode'}
             </Button>
@@ -578,6 +601,9 @@ export function App() {
       )}
 
       {toast && <div className={'app-toast' + (/fail|couldn|error/i.test(toast) ? ' app-toast--error' : '')}><Icon n={/fail|couldn|error/i.test(toast) ? 'circle-alert' : 'check'} s={16} />{toast}</div>}
+
+      {!song && <FeedbackFab onClick={openFeedback} />}
+      <FeedbackModal open={fbOpen} context={feedbackContext} onClose={() => setFbOpen(false)} onSent={setToast} onError={setToast} />
 
       <Credit className="app-credit--float" />
     </div>

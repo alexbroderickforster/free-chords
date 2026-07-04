@@ -1,15 +1,23 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
+import { execSync } from 'node:child_process';
 
 // FreeChords — a personal, locally-run guitar chord app.
 // Installable PWA with an offline-capable app shell (self-hosted fonts).
 //
 // Served at the root of its own domain (freechords.app), so base is "/".
+
+// Short commit of this build, surfaced in feedback submissions so a report can
+// be tied back to the exact deployed version. Falls back to 'dev' outside git.
+let COMMIT = 'dev';
+try { COMMIT = execSync('git rev-parse --short HEAD').toString().trim() || 'dev'; } catch { /* no git available */ }
+
 export default defineConfig(() => {
   const base = '/';
   return {
     base,
+    define: { __APP_COMMIT__: JSON.stringify(COMMIT) },
     plugins: [
       react(),
       VitePWA({
