@@ -41,11 +41,15 @@ wrangler login
 wrangler kv namespace create LIMITS
 #   → copy the printed id into the [[kv_namespaces]] block in wrangler.toml and uncomment it
 
-# the workspace-scoped key from Step 1, stored as a server-side secret
-wrangler secret put ANTHROPIC_API_KEY
-
+# create the Worker first (so the secret has something to attach to)
 wrangler deploy
 #   → prints https://freechords-image-proxy.<you>.workers.dev  — copy this URL
+
+# now store the key as a server-side secret. NOTE: "ANTHROPIC_API_KEY" is the
+# secret's NAME — type it literally, do NOT replace it with the key. wrangler
+# then prompts "Enter a secret value:" — paste the workspace-scoped key from
+# Step 1 (sk-ant-…) there (hidden input). It takes effect immediately; no redeploy.
+wrangler secret put ANTHROPIC_API_KEY
 ```
 
 `worker/wrangler.toml` also has knobs you can tune: `MODEL`, `ALLOWED_ORIGINS`,
