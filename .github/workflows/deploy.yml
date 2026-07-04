@@ -27,9 +27,12 @@ jobs:
       - run: npm ci
       - run: npm run build
         env:
-          # Public Google OAuth client ID for Drive sync (set as a repo variable).
-          # Safe to expose; leaving it unset just hides the sync feature.
-          VITE_GOOGLE_CLIENT_ID: ${{ vars.VITE_GOOGLE_CLIENT_ID }}
+          # All three are set as repo Variables (Settings → Secrets and variables
+          # → Actions → Variables). Safe to expose; each just enables its feature
+          # when present, and leaves it hidden/inert when unset.
+          VITE_GOOGLE_CLIENT_ID: ${{ vars.VITE_GOOGLE_CLIENT_ID }}   # Drive sync
+          VITE_FEEDBACK_URL: ${{ vars.VITE_FEEDBACK_URL }}           # feedback → Sheet
+          VITE_IMAGE_PROXY_URL: ${{ vars.VITE_IMAGE_PROXY_URL }}     # shared image reader
       - uses: actions/configure-pages@v6
       - uses: actions/upload-pages-artifact@v5
         with:
