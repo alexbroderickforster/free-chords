@@ -3,7 +3,9 @@
 A calm, ad-free personal guitar chord app — chords sitting directly above the
 lyric syllables they belong to, the deliberate opposite of cluttered,
 upsell-heavy tab sites. Built for playing acoustic, chord-based songs from a
-laptop or a tablet on a music stand.
+laptop or a tablet on a music stand — plus tools to practice, tune, train your
+ear, and record yourself. A built-in **Guide** (opens on first launch) walks
+through it all.
 
 **No ads, no clutter, no upsells, anywhere, ever.**
 
@@ -34,36 +36,85 @@ the first load).
 
 ## Features
 
-- **Song view (play mode).** A teleprompter-style reading view: large, legible
-  chords-over-lyrics that fade only at the very top and bottom edges, smooth
-  hands-free **auto-scroll** with a speed control, **transpose** (±semitones)
-  and **capo** controls, adjustable font size, a **hide-chords** toggle for
-  lyrics-only practice, and **hover (or tap) any chord** to see its fretboard
-  diagram (covering essentially any chord, including barre and up-the-neck
-  shapes). A full-screen mode (desktop) goes edge-to-edge — press **Esc** to leave.
-  Each song **remembers its own** transpose, font size, hide-chords, and
-  auto-scroll speed.
-- **Library / songbook.** Searchable, sortable (Recent / Title / Artist),
-  group-by-artist, and tag-filterable. Each song shows its key, when it was
-  added, a favorite **★**, and a learning status (**To learn → Learning →
-  Mastered**) you can cycle inline. Click an artist to see all their songs;
-  starred songs float to the top of the normal list view.
-  **Export** your whole songbook to a JSON file and **import** it back (merges
-  by song) to move it between browsers or share it.
-- **Add / import.** Paste raw chords copied from a webpage and clean them into
-  ChordPro, with a live rendered preview and detected-chord chips.
-- **Edit.** Edit any saved song — title, artist, key, capo, tags, and the
-  ChordPro source directly — with a live preview, or delete it.
-- **Tuner.** Reference tones for each string plus a microphone "Listen" mode
-  with live pitch detection and an in-tune meter.
-- **Responsive.** A left sidebar on desktop/web, a bottom tab bar on mobile.
-- **Warm light + low-light dark mode**, deep-indigo accent on warm paper.
-- **Installable PWA.** Add it to your home screen and it runs **fully offline**
-  — the app shell and fonts are self-hosted and cached on the device.
-- **Optional Google Drive sync.** Connect your own Google Drive to keep the
-  songbook in sync across devices. It's off by default and stays offline-first;
-  your data lives in *your* Drive (a private app folder), not on any server.
-  Requires a one-time setup — see **Cross-device sync** below.
+### Songbook
+
+- **Library.** Searchable, sortable (Recent / Title / Artist), group-by-artist,
+  and tag-filterable. Each song shows its key, when it was added, a favorite
+  **★**, and a learning status (**To learn → Learning → Mastered**) you can
+  cycle inline. Click an artist to see all their songs; starred songs float to
+  the top.
+- **Three ways to add a song.**
+  - **Paste** raw chords copied from a webpage — they're auto-aligned into
+    chords-over-lyrics (ChordPro), with a live preview and detected-chord chips.
+    Handles PDF/OCR-flattened pastes (where the columns are lost) gracefully.
+  - **Upload a screenshot** — reads the chart with **Claude vision** (using your
+    own API key, set in Settings; the call goes browser-direct, no backend) or
+    falls back to on-device **OCR** when no key is set.
+  - **Grid editor** — type or paste lyrics, then click above any word to drop a
+    chord from a type-to-filter picker; drag a chord to nudge it, place chords on
+    lyric-less lines (intros/turnarounds), and bulk-paste a whole verse. Round-
+    trips to the same ChordPro, so any existing song opens in it.
+- **Edit / delete** any song (fields + ChordPro source, or the Grid editor),
+  with a live preview.
+
+### Play-along (song view)
+
+- **Teleprompter auto-scroll** with edge fade, a simple **Speed** control or a
+  **BPM** tempo with **tap-tempo** (or the space bar). The screen stays awake
+  while scrolling.
+- **Transpose** (±semitones) and **capo**; **hide chords**; adjustable font
+  size; **full-screen focus mode** (press **Esc** to leave).
+- **Chord diagrams** — hover or tap any chord for its fretboard fingering.
+- **Key ping** (hear the tonic before you play) and a **metronome**.
+- **Record a scratch take** — a 3·2·1 count-in, then it captures your mic while
+  the sheet scrolls; save or share the audio file (its name includes the key and
+  capo). Optional **tuning check** listens while you play and flags if the
+  guitar drifts out of tune.
+- **Export a song** as a self-contained offline HTML player (auto-scrolls) or a
+  printable **PDF**. Each song remembers its own transpose, font, hide-chords,
+  and speed.
+
+### Playlists
+
+Build a set and play straight through — **auto-advance** between songs, a
+between-song countdown that previews the **next song's key and capo**, and a
+**cross-fade**. Album playlists, reordering, and offline/PDF export of a whole
+set.
+
+### Practice — A/B loops
+
+Paste a **YouTube** link or load an **audio file**, set an **A–B loop** over a
+tricky passage, and slow it **0.25–2×** without changing pitch. Draggable A/B
+pins on an integrated timeline, saved loops (Drive-synced), shareable links, and
+a pre-roll lead-in.
+
+### Training — ear trainer
+
+Hear two notes and **name the interval**. Choose the interval pool, direction
+(up / down / both / harmonic) and speed; **adaptive weighting** drills the
+intervals you miss more often and tracks **per-interval accuracy** over time.
+Keyboard shortcuts throughout.
+
+### Tuner
+
+Reference tones for each string plus a microphone **Listen** mode with live
+pitch detection that locks onto each string, an in-tune meter, guitar/bass and
+chromatic modes, and an adjustable **in-tune window** (Strict / Standard /
+Relaxed).
+
+### Throughout
+
+- **Guide.** A built-in intro/feature tour that opens on first launch and is
+  reachable from the nav any time.
+- **Responsive** — sidebar on desktop, bottom tab bar on mobile — with a warm
+  light and low-light dark mode.
+- **Installable PWA** that runs **fully offline** (app shell and fonts are
+  self-hosted and cached).
+- **On-device by default.** Everything is stored in your own browser; nothing is
+  uploaded or shared unless you choose to sync or share.
+- **Backup & sync.** Export/import your songbook as a file, or connect your own
+  **Google Drive** for optional, offline-first cross-device sync (a private app
+  folder, no server — see **Cross-device sync** below).
 
 ## Tech
 
@@ -96,16 +147,16 @@ npm run preview  # preview the production build
 ```
 src/
   components/   design-system primitives (Button, Card, Tag, SideNav, …) + Icon
-  screens/      Library, SongView, AddImport, TunerView, Practice (parked)
-  lib/          music (status), chordpro (ChordSheetJS), chords (chords-db),
-                storage (localStorage), backup (export/import), sync (Drive)
+  screens/      Library, SongView, SongEdit, AddImport, GridEditor, Playlists,
+                Practice (A/B loops), Training (ear trainer), TunerView,
+                Settings, Guide, TuningLab (experimental)
+  lib/          music, chordpro (ChordSheetJS), gridedit (grid ⇄ ChordPro),
+                chords (chords-db), tuning (chord/tuning DSP), loop, imageImport
+                (Claude vision / OCR), songbookExport, storage, backup, sync
   data/         sample songbook
   styles/       design tokens + app stylesheet
 public/         brand SVGs (mark + wordmark)
 ```
-
-> `Practice.jsx` is intentionally **parked** — kept as a record but not wired
-> into the navigation. See the note at the top of that file to re-enable it.
 
 ## Status & roadmap
 

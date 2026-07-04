@@ -84,6 +84,10 @@ export function saveTraining(v) { write('training', v); }
 export function loadTrainingStats() { const d = read('trainingStats', null); return d && typeof d === 'object' ? d : {}; }
 export function saveTrainingStats(v) { write('trainingStats', v); }
 
+// Whether the intro/guide has been dismissed (so it only auto-opens first run).
+export function loadSeenGuide() { return read('seenGuide', false) === true; }
+export function saveSeenGuide(v) { write('seenGuide', !!v); }
+
 // Claude API key for image import. Device-local only — deliberately NOT part of
 // the Drive-sync payload (it's a secret and must never leave this device).
 export function loadApiKey() { return read('apiKey', '') || ''; }

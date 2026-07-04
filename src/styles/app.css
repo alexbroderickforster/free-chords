@@ -760,6 +760,32 @@ body {
 .tr-set-item .fc-seg { flex-wrap: wrap; }
 .tr-toggles { display: flex; flex-direction: column; gap: 14px; }
 
+/* ---- Guide / intro ---- */
+.screen.guide { max-width: 780px; }
+.guide-start { display: inline-flex; align-items: center; gap: 8px; margin-top: 18px; border: none; cursor: pointer; font-family: var(--font-sans); font-weight: 600; font-size: var(--text-base); padding: 12px 22px; border-radius: 999px; background: var(--accent); color: var(--ink-on-accent); transition: background .12s; }
+.guide-start:hover { background: var(--accent-hover); }
+.guide-start--quiet { background: var(--surface); color: var(--ink); border: 1px solid var(--line); }
+.guide-start--quiet:hover { background: var(--surface-hover); }
+.guide-try-arrow { transform: rotate(180deg); }
+.guide-sec { margin-top: 34px; }
+.guide-h2 { font-family: var(--font-serif, var(--font-sans)); font-size: var(--text-lg); font-weight: 700; color: var(--ink); margin: 0 0 14px; }
+.guide-note { font-size: var(--text-sm); color: var(--ink-soft); margin: 0 0 12px; line-height: 1.5; }
+.guide-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
+.guide-card { display: flex; gap: 13px; padding: 16px; border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--surface); }
+.guide-card-ic { flex: none; width: 40px; height: 40px; border-radius: 12px; background: var(--accent-soft); color: var(--accent); display: flex; align-items: center; justify-content: center; }
+.guide-card-body { min-width: 0; }
+.guide-card-h { font-weight: 700; font-size: var(--text-md); color: var(--ink); margin-bottom: 4px; }
+.guide-card-p { font-size: var(--text-sm); color: var(--ink-soft); line-height: 1.55; margin: 0; }
+.guide-try { display: inline-flex; align-items: center; gap: 5px; margin-top: 10px; border: none; background: none; padding: 0; cursor: pointer; font-family: var(--font-sans); font-weight: 600; font-size: var(--text-sm); color: var(--accent); }
+.guide-try:hover { text-decoration: underline; }
+.guide-list { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 9px; }
+.guide-list li { font-size: var(--text-sm); color: var(--ink-soft); line-height: 1.5; }
+.guide-list b, .guide-note b { color: var(--ink); font-weight: 650; }
+.guide-sec--tips { margin-top: 30px; }
+.guide-tips { display: flex; gap: 13px; padding: 18px; border-radius: var(--radius-lg); background: var(--accent-soft); border: 1px solid color-mix(in oklab, var(--accent) 20%, transparent); }
+.guide-tips-ic { flex: none; color: var(--accent); margin-top: 2px; }
+.guide-foot { margin-top: 34px; padding-top: 22px; border-top: 1px solid var(--line); }
+
 /* ---- Playlists ---- */
 .pl-list { display: flex; flex-direction: column; gap: 10px; }
 .pl-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 14px 16px; }

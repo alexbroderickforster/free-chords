@@ -11,10 +11,11 @@ import { Practice } from './screens/Practice.jsx';
 import { TunerView } from './screens/TunerView.jsx';
 import { TuningLab } from './screens/TuningLab.jsx';
 import { Training } from './screens/Training.jsx';
+import { Guide } from './screens/Guide.jsx';
 import { SONGS, ALL_TAGS } from './data/songs.js';
 import { nextStatus } from './lib/music.js';
 import { Settings, SyncBadge } from './screens/Settings.jsx';
-import { loadSongs, saveSongs, loadTags, saveTags, loadTheme, saveTheme, loadThemeAt, saveThemeAt, loadPrefs, savePrefs, loadDeletions, saveDeletions, loadSyncOptIn, saveSyncOptIn, loadPlaylists, savePlaylists, loadPlaylistDeletions, savePlaylistDeletions, loadKeyPing, saveKeyPing, loadApiKey, saveApiKey, loadLoops, saveLoops, loadLoopDeletions, saveLoopDeletions, loadTuningMonitor, saveTuningMonitor } from './lib/storage.js';
+import { loadSongs, saveSongs, loadTags, saveTags, loadTheme, saveTheme, loadThemeAt, saveThemeAt, loadPrefs, savePrefs, loadDeletions, saveDeletions, loadSyncOptIn, saveSyncOptIn, loadPlaylists, savePlaylists, loadPlaylistDeletions, savePlaylistDeletions, loadKeyPing, saveKeyPing, loadApiKey, saveApiKey, loadLoops, saveLoops, loadLoopDeletions, saveLoopDeletions, loadTuningMonitor, saveTuningMonitor, loadSeenGuide, saveSeenGuide } from './lib/storage.js';
 import { exportSongbook, parseBackup } from './lib/backup.js';
 import { renderSongbookHtml, downloadHtml, openDoc } from './lib/songbookExport.js';
 import { isStandalone, isIos } from './lib/offline.js';
@@ -47,7 +48,8 @@ function friendlySyncError(e) {
 }
 
 export function App() {
-  const [tab, setTab] = useState('songs');
+  const [seenGuide, setSeenGuide] = useState(() => loadSeenGuide());
+  const [tab, setTab] = useState(() => (loadSeenGuide() ? 'songs' : 'guide')); // first launch opens the guide
   const [song, setSong] = useState(null);
   const [dark, setDark] = useState(() => loadTheme());
   const [toast, setToast] = useState('');
@@ -447,6 +449,7 @@ export function App() {
     { value: 'practice', label: 'Practice', icon: <Icon n="repeat" s={22} /> },
     { value: 'training', label: 'Training', icon: <Icon n="graduation-cap" s={22} /> },
     { value: 'tuner', label: 'Tuner', icon: <Icon n="audio-lines" s={22} /> },
+    { value: 'guide', label: 'Guide', icon: <Icon n="book-open" s={22} /> },
     { value: 'settings', label: 'Settings', icon: <Icon n="settings" s={22} /> },
   ];
   // NOTE: 'Add' lives as a button on the Songs page header (not a nav item).
@@ -492,6 +495,7 @@ export function App() {
         {tab === 'add' && <AddImport onBack={() => setTab('songs')} knownTags={knownTags} artistOptions={artistOptions} albumOptions={albumOptions} apiKey={apiKey} onSaveApiKey={setApiKey} onSave={addSong} />}
         {tab === 'practice' && <Practice loops={loops} onSaveLoop={saveLoop} onDeleteLoop={deleteLoop} initialLoop={initialLoop} />}
         {tab === 'training' && <Training />}
+        {tab === 'guide' && <Guide firstRun={!seenGuide} onGo={goTab} onDone={() => { if (!seenGuide) { setSeenGuide(true); saveSeenGuide(true); } goTab('songs'); }} />}
         {tab === 'tuner' && <TunerView />}
         {tab === 'tuninglab' && <TuningLab onBack={() => setTab('settings')} />}
         {tab === 'settings' && <Settings {...backupProps} dark={dark} onToggleTheme={toggleTheme} onOpenLab={() => setTab('tuninglab')} />}
