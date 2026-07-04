@@ -20,6 +20,10 @@ const MODEL = 'claude-sonnet-5';
 const PROXY_URL = import.meta.env.VITE_IMAGE_PROXY_URL || '';
 export const hasSharedReader = !!PROXY_URL;
 
+// Shown when Claude returns no text — most often because it won't transcribe a
+// whole page of copyrighted lyrics at once. A tighter crop reliably goes through.
+const EMPTY_MSG = 'Claude didn’t return a transcription for that image. This tends to happen with a full page of lyrics — try a tighter crop of just the part you want (a verse or two), which goes through far more reliably.';
+
 // NOTE: keep this PROMPT identical to the one in worker/src/worker.js (the shared
 // reader) — both paths must transcribe the same way.
 const PROMPT = `You are given an image of a song's chord sheet (chords printed above the lyrics), or possibly guitar tablature. Transcribe it faithfully.
@@ -144,7 +148,7 @@ async function callClaude({ base64, mediaType, apiKey }) {
     .map((b) => b.text)
     .join('')
     .trim();
-  if (!text) throw retryable(new Error('Claude returned an empty result — try again.'));
+  if (!text) throw retryable(new Error(EMPTY_MSG));
   return text;
 }
 
@@ -170,12 +174,15 @@ async function callProxy({ base64, mediaType }) {
   if (!res.ok) {
     let detail = '';
     try { const j = await res.json(); detail = (j && (j.error || j.message)) || ''; } catch { /* ignore */ }
-    throw retryable(new Error(detail || `Image reader failed (${res.status}).`)); // 5xx / empty from the proxy → retry once
+    // The proxy reports an empty completion as a 5xx with an "empty" message —
+    // surface the actionable crop guidance instead of the raw text.
+    const msg = /empty/i.test(detail) ? EMPTY_MSG : (detail || `Image reader failed (${res.status}).`);
+    throw retryable(new Error(msg));
   }
   let data;
   try { data = await res.json(); } catch { data = null; }
   const text = (data && typeof data.text === 'string') ? data.text.trim() : '';
-  if (!text) throw retryable(new Error('The image reader returned an empty result — try again.'));
+  if (!text) throw retryable(new Error(EMPTY_MSG));
   return text;
 }
 
