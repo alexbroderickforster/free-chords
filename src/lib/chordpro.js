@@ -92,7 +92,14 @@ const CHORD_RE = new RegExp('^[A-G][#b♯♭]?' + CHORD_ATOM + '*(?:/[A-G][#b♯
 
 const isChordToken = (t) => CHORD_RE.test(t);
 const isBlankLine = (s) => s.trim() === '';
-const isSectionHeader = (s) => /^\s*\[[^\]]+\]/.test(s); // [Intro], [Verse 1], [Hook] …
+// A section header is a line that is ENTIRELY one [tag] — [Intro], [Verse 1], [Hook].
+// It must not be an inline chord (a line like "[G]Why are you…" or a chord-only
+// "[G] [Bm]" row is ChordPro to preserve, not a header) — hence the whole-line
+// anchor plus the not-a-chord guard, which keeps cleanup idempotent on ChordPro.
+const isSectionHeader = (s) => {
+  const m = s.match(/^\s*\[([^\]]+)\]\s*$/);
+  return !!m && !isChordToken(m[1].trim());
+};
 const isChordLine = (s) => {
   const toks = s.trim().split(/\s+/).filter(Boolean);
   return toks.length > 0 && toks.every(isChordToken);
