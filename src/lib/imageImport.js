@@ -20,9 +20,8 @@ const MODEL = 'claude-sonnet-5';
 const PROXY_URL = import.meta.env.VITE_IMAGE_PROXY_URL || '';
 export const hasSharedReader = !!PROXY_URL;
 
-// Shown when Claude returns no text — most often because it won't transcribe a
-// whole page of copyrighted lyrics at once. A tighter crop reliably goes through.
-const EMPTY_MSG = 'Claude didn’t return a transcription for that image. This tends to happen with a full page of lyrics — try a tighter crop of just the part you want (a verse or two), which goes through far more reliably.';
+// Shown on the rare occasion Claude returns no text for an image.
+const EMPTY_MSG = 'Claude didn’t return a transcription for that image — try again, or try a clearer or more tightly-cropped screenshot.';
 
 // NOTE: keep this PROMPT identical to the one in worker/src/worker.js (the shared
 // reader) — both paths must transcribe the same way.
@@ -152,10 +151,7 @@ async function callClaude({ base64, mediaType, apiKey }) {
     .map((b) => b.text)
     .join('')
     .trim();
-  if (!text) {
-    const diag = ` [diagnostic — stop_reason: ${data && data.stop_reason}; blocks: ${((data && data.content) || []).map((b) => b && b.type).join(',') || 'none'}; output_tokens: ${data && data.usage && data.usage.output_tokens}]`;
-    throw retryable(new Error(EMPTY_MSG + diag));
-  }
+  if (!text) throw retryable(new Error(EMPTY_MSG));
   return text;
 }
 
@@ -179,16 +175,12 @@ async function callProxy({ base64, mediaType }) {
     throw e;
   }
   if (!res.ok) {
-    let detail = '', diag = '';
-    try {
-      const j = await res.json();
-      detail = (j && (j.error || j.message)) || '';
-      if (j && j.stop_reason) diag = ` [diagnostic — stop_reason: ${j.stop_reason}; blocks: ${(j.blocks || []).join(',') || 'none'}; output_tokens: ${j.output_tokens}]`;
-    } catch { /* ignore */ }
+    let detail = '';
+    try { const j = await res.json(); detail = (j && (j.error || j.message)) || ''; } catch { /* ignore */ }
     // The proxy reports an empty completion as a 5xx with an "empty" message —
-    // surface the actionable crop guidance instead of the raw text.
+    // surface the friendlier guidance instead of the raw text.
     const msg = /empty/i.test(detail) ? EMPTY_MSG : (detail || `Image reader failed (${res.status}).`);
-    throw retryable(new Error(msg + diag));
+    throw retryable(new Error(msg));
   }
   let data;
   try { data = await res.json(); } catch { data = null; }
