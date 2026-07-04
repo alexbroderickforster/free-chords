@@ -88,6 +88,15 @@ async function prepImage(file, maxEdge = 1600) {
   }
 }
 
+// Mark an error the orchestrator may retry once (transient: an empty completion,
+// a 5xx, or a network blip). NOT tagged: bad key, rate limit, too-large, refusal,
+// or a shared-pool 'quota' signal — retrying those is pointless.
+const retryable = (e) => { e.retry = true; return e; };
+async function withRetry(fn) {
+  try { return await fn(); }
+  catch (e) { if (e && e.retry) return await fn(); throw e; }
+}
+
 async function callClaude({ base64, mediaType, apiKey }) {
   let res;
   try {
@@ -114,7 +123,7 @@ async function callClaude({ base64, mediaType, apiKey }) {
       }),
     });
   } catch {
-    throw new Error('Couldn’t reach Claude — check your connection and try again.');
+    throw retryable(new Error('Couldn’t reach Claude — check your connection and try again.'));
   }
 
   if (!res.ok) {
@@ -124,7 +133,8 @@ async function callClaude({ base64, mediaType, apiKey }) {
     if (res.status === 429) throw new Error('Claude is rate-limiting — wait a moment and try again.');
     if (res.status === 413 || (res.status === 400 && /image|large|size/i.test(detail)))
       throw new Error('That image was too large for Claude. Try a smaller or cropped screenshot.');
-    throw new Error(detail || `Claude request failed (${res.status}).`);
+    const e = new Error(detail || `Claude request failed (${res.status}).`);
+    throw res.status >= 500 ? retryable(e) : e; // a 5xx is worth one more try
   }
 
   const data = await res.json();
@@ -134,7 +144,7 @@ async function callClaude({ base64, mediaType, apiKey }) {
     .map((b) => b.text)
     .join('')
     .trim();
-  if (!text) throw new Error('Claude returned an empty result — try again.');
+  if (!text) throw retryable(new Error('Claude returned an empty result — try again.'));
   return text;
 }
 
@@ -150,7 +160,7 @@ async function callProxy({ base64, mediaType }) {
       body: JSON.stringify({ image: base64, mediaType }),
     });
   } catch {
-    throw new Error('Couldn’t reach the image reader — check your connection and try again.');
+    throw retryable(new Error('Couldn’t reach the image reader — check your connection and try again.'));
   }
   if (res.status === 429 || res.status === 402) {
     const e = new Error('Shared reader is at its limit.');
@@ -160,12 +170,12 @@ async function callProxy({ base64, mediaType }) {
   if (!res.ok) {
     let detail = '';
     try { const j = await res.json(); detail = (j && (j.error || j.message)) || ''; } catch { /* ignore */ }
-    throw new Error(detail || `Image reader failed (${res.status}).`);
+    throw retryable(new Error(detail || `Image reader failed (${res.status}).`)); // 5xx / empty from the proxy → retry once
   }
   let data;
   try { data = await res.json(); } catch { data = null; }
   const text = (data && typeof data.text === 'string') ? data.text.trim() : '';
-  if (!text) throw new Error('The image reader returned an empty result — try again.');
+  if (!text) throw retryable(new Error('The image reader returned an empty result — try again.'));
   return text;
 }
 
@@ -265,7 +275,7 @@ export async function extractSongFromImage({ file, apiKey, onStatus }) {
   if (key) {
     // 1. User's own key → browser-direct.
     if (onStatus) onStatus('claude');
-    const reply = await callClaude({ base64: img.base64, mediaType: img.mediaType, apiKey: key });
+    const reply = await withRetry(() => callClaude({ base64: img.base64, mediaType: img.mediaType, apiKey: key }));
     const r = parseClaudeResult(reply);
     const chordpro = r.content || '';
     return { method: 'claude', format: r.format, title: r.title, artist: r.artist, key: r.key, capo: r.capo, chordpro, rawText: chordpro };
@@ -277,7 +287,7 @@ export async function extractSongFromImage({ file, apiKey, onStatus }) {
   if (PROXY_URL) {
     if (onStatus) onStatus('claude');
     try {
-      const reply = await callProxy({ base64: img.base64, mediaType: img.mediaType });
+      const reply = await withRetry(() => callProxy({ base64: img.base64, mediaType: img.mediaType }));
       const r = parseClaudeResult(reply);
       const chordpro = r.content || '';
       return { method: 'shared', format: r.format, title: r.title, artist: r.artist, key: r.key, capo: r.capo, chordpro, rawText: chordpro };
