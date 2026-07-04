@@ -20,7 +20,9 @@ const MODEL = 'claude-sonnet-5';
 const PROXY_URL = import.meta.env.VITE_IMAGE_PROXY_URL || '';
 export const hasSharedReader = !!PROXY_URL;
 
-const PROMPT = `You are given an image of a song's chord sheet (chords positioned above the lyrics), or possibly guitar tablature. Transcribe it faithfully.
+// NOTE: keep this PROMPT identical to the one in worker/src/worker.js (the shared
+// reader) — both paths must transcribe the same way.
+const PROMPT = `You are given an image of a song's chord sheet (chords printed above the lyrics), or possibly guitar tablature. Transcribe it faithfully.
 
 Return ONLY a JSON object — no markdown fences, no commentary — with these fields:
 - "format": "chordpro" for a chords-over-lyrics sheet, or "tab" for ASCII guitar tablature.
@@ -28,13 +30,22 @@ Return ONLY a JSON object — no markdown fences, no commentary — with these f
 - "artist": the artist if shown, else "".
 - "key": the key if explicitly shown, else "".
 - "capo": the capo fret as a number if shown, else 0.
-- "content": the transcription (see below).
+- "content": the transcription (rules below).
 
-For "chordpro", write "content" as ChordPro, following these rules exactly:
-- Read EVERY chord label in the image, top to bottom and left to right — do not skip or drop any. If a line has two or more chords above it, include all of them.
-- Place each chord inline in square brackets IMMEDIATELY BEFORE the exact syllable it sits above, e.g. "When the [C]night has [G]come" — NOT bunched at the start like "[C] [G]When the night has come". A chord's horizontal position matters: a chord drawn toward the right of the line belongs over a later word, not an early one.
-- For a chords-only line with no lyrics beneath it (like an intro or a turnaround), bracket each chord: "[G] [Dm] [C] [G]".
-- Put section headers on their own line as {c: Verse 1}, {c: Chorus}, etc.
+Write "content" as ChordPro. The rule that matters most: put every chord INLINE inside the lyric line, in [square brackets], immediately before the exact syllable it sits above.
+
+Worked example — if the image shows:
+    G            C          D
+    I walk the long road down to the sea
+then "content" for that line must be exactly:
+I walk the [G]long road [C]down to the [D]sea
+
+Rules, follow exactly:
+- Bracket EVERY chord, including the first one on a line: "[G]I walk the...". Never leave a chord as a bare letter sitting outside brackets.
+- Horizontal position matters: a chord drawn toward the right of the line belongs over a later word, not an early one. Read every chord label; skip none.
+- A chords-only line with no lyrics under it (intro, turnaround, ending) is a plain line of bracketed chords: "[G] [D] [Em] [C]".
+- NEVER put lyrics, or a row of chords, inside a {c: ...} directive. Use {c: ...} ONLY for a short section label on its own line, like {c: Verse 1} or {c: Chorus}, and only if the image clearly shows one.
+- If a chord is written with a fingering in parentheses like "Dsus(000230)", use just the chord name: "[Dsus]".
 - Preserve line and verse breaks with \\n. Do not invent chords or lyrics the image doesn't show.
 
 For "tab", put the tablature in "content" verbatim as plain text — keep the string letters and dashes exactly — with \\n between lines.
