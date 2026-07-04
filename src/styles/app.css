@@ -255,14 +255,13 @@ body {
 @media (min-width: 880px) { .lib-backup-mobile { display: none; } }
 
 /* ---- "Built by" credit ---- */
-.app-credit { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; text-align: right; font-size: 11px; color: var(--ink-faint); line-height: 1.45; }
+.app-credit { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; text-align: right; font-size: 11px; color: var(--ink-faint); line-height: 1.4; }
+.app-credit__row { display: flex; align-items: center; gap: 6px; }
 .app-credit__by { color: var(--ink-faint); }
-.app-credit__name { font-weight: 600; color: var(--ink-soft); text-decoration: none; }
-.app-credit__name:hover { color: var(--accent); }
-.app-credit__links { display: flex; align-items: center; gap: 6px; }
-.app-credit__links a { color: var(--ink-faint); text-decoration: none; }
-.app-credit__links a:hover { color: var(--accent); text-decoration: underline; }
-.app-credit__dot { color: var(--ink-faint); }
+.app-credit__name { font-weight: 600; color: var(--ink-soft); }
+.app-credit__ic { display: inline-flex; align-items: center; color: var(--ink-faint); }
+.app-credit__ic:hover { color: var(--accent); }
+.app-credit__ic svg { display: block; }
 
 /* Desktop: a floating pill pinned to the bottom-right corner, over everything.
    Hidden on mobile (the in-flow version below takes over) and in focus mode. */
