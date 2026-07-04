@@ -169,6 +169,32 @@ async function callProxy({ base64, mediaType }) {
   return text;
 }
 
+// The vision model sometimes wraps a chord line in a {c: ...} comment directive
+// with the first chord left bare — e.g. "{c: C She took [D]it}" (chord over the
+// first word) or "{c: G [Em] [G]}" (an intro run) — instead of clean inline
+// ChordPro. {c: ...} should only ever be a short SECTION label, so unwrap any
+// {c:} whose content actually leads with a chord: bracket the leading bare
+// chord(s) and drop the wrapper. Real labels ("Verse 1", "Chorus") don't lead
+// with a chord, so they're left untouched.
+const CHORD_TOKEN = /^[A-G][#b]?(?:m|maj|min|dim|aug|sus[0-9]?|add[0-9]*|M)?[0-9]*(?:\/[A-G][#b]?)?$/;
+const COMMENT_LINE = /^\{\s*(?:c|comment)\s*:\s*(.*?)\s*\}$/i;
+
+export function normalizeChordPro(src) {
+  return String(src || '').split('\n').map((line) => {
+    const m = line.match(COMMENT_LINE);
+    if (!m) return line;
+    const tokens = m[1].trim().split(/\s+/);
+    if (!tokens.length || !CHORD_TOKEN.test(tokens[0])) return line; // a real section label — leave it
+    let i = 0; const lead = [];
+    while (i < tokens.length && CHORD_TOKEN.test(tokens[i])) lead.push(tokens[i++]); // peel leading bare chords
+    const rest = tokens.slice(i).join(' ');
+    const brackets = lead.map((c) => `[${c}]`);
+    if (!rest) return brackets.join(' ');                              // {c: D} -> [D]
+    if (rest.startsWith('[')) return brackets.join(' ') + ' ' + rest;  // chord run -> [D] [Bm] ...
+    return brackets.join('') + rest;                                   // over lyrics -> [C]She took...
+  }).join('\n');
+}
+
 // Tolerant parse of the model's reply into our normalized shape. Exported so the
 // parsing can be unit-tested without a network call.
 export function parseClaudeResult(text) {
@@ -185,7 +211,7 @@ export function parseClaudeResult(text) {
 
   if (!obj || typeof obj !== 'object') {
     // Model didn't return JSON — treat the whole reply as ChordPro body.
-    return { format: 'chordpro', title: '', artist: '', key: '', capo: 0, content: t };
+    return { format: 'chordpro', title: '', artist: '', key: '', capo: 0, content: normalizeChordPro(t) };
   }
 
   const str = (v) => (typeof v === 'string' ? v.trim() : '');
@@ -196,7 +222,9 @@ export function parseClaudeResult(text) {
     artist: str(obj.artist),
     key: str(obj.key),
     capo,
-    content: typeof obj.content === 'string' ? obj.content : '',
+    content: typeof obj.content === 'string'
+      ? (obj.format === 'tab' ? obj.content : normalizeChordPro(obj.content))
+      : '',
   };
 }
 

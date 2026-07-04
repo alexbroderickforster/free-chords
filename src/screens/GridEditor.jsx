@@ -215,7 +215,7 @@ export function GridEditor({ initialValue = '', onChange }) {
   const renderPicker = (li, ci) => {
     const existing = lines[li].chords[ci];
     const q = pfilter.trim().toLowerCase();
-    const rec = used.filter((c) => c.toLowerCase().startsWith(q));
+    const rec = used.filter((c) => c.toLowerCase().includes(q));
     const rw = rootRef.current ? rootRef.current.clientWidth : 320;
     const left = Math.max(0, Math.min(ci * chW, rw - 284));
     return (
@@ -232,7 +232,7 @@ export function GridEditor({ initialValue = '', onChange }) {
         <div className="ge-pop-lbl">Chords</div>
         <div className="ge-pop-chords">
           {CHORD_GROUPS.map((g) => {
-            const items = g.chords.filter((c) => c.toLowerCase().startsWith(q));
+            const items = g.chords.filter((c) => c.toLowerCase().includes(q));
             if (!items.length) return null;
             return (
               <div className="ge-pop-crow" key={g.root}>
