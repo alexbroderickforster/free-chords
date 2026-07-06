@@ -575,7 +575,7 @@ body {
 .sv-status--learn:hover { color: var(--ink-soft); border-color: var(--ink-faint); }
 .sv-status--learning { background: var(--accent-soft); color: var(--accent); }
 .sv-status--mastered { background: var(--good-soft); color: var(--good); }
-.sv-sub { font-size: var(--text-xs); color: var(--ink-soft); display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px; margin-top: 4px; }
+.sv-sub { position: relative; font-size: var(--text-xs); color: var(--ink-soft); display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px; margin-top: 4px; }
 .sv-subdiv { width: 1px; height: 13px; background: var(--line); margin: 0 1px; }
 .sv-pill { display: inline-flex; align-items: center; font-family: var(--font-sans); font-weight: 600; font-size: 12px; letter-spacing: .01em; padding: 3px 9px; border-radius: var(--radius-pill); background: var(--surface-sunken); color: var(--ink); border: 1px solid var(--line); white-space: nowrap; }
 .sv-pill--capo { background: var(--accent-soft); color: var(--accent); border-color: color-mix(in oklab, var(--accent) 30%, transparent); }
@@ -607,8 +607,21 @@ body {
 .sv-tagadd { display: inline-flex; align-items: center; gap: 3px; border: 1px dashed var(--line); background: transparent; color: var(--ink-faint); border-radius: var(--radius-pill); padding: 3px 9px 3px 7px; font-family: var(--font-sans); font-size: var(--text-xs); font-weight: 600; cursor: pointer; transition: color .12s, border-color .12s; }
 .sv-tagadd:hover { color: var(--accent); border-color: var(--accent-tint); }
 .sv-taginput { width: 110px; border: 1px solid var(--accent); outline: none; background: var(--surface); color: var(--ink); border-radius: var(--radius-pill); padding: 3px 10px; font-family: var(--font-sans); font-size: var(--text-xs); font-weight: 600; box-shadow: 0 0 0 3px var(--accent-ring); }
+/* Tags condensed into a dropdown button + popover */
+.sv-tagswrap { display: inline-flex; }
+.sv-tagsbtn { display: inline-flex; align-items: center; gap: 4px; border: 1px solid var(--line); background: transparent; color: var(--ink-soft); border-radius: var(--radius-pill); padding: 3px 7px 3px 9px; font-family: var(--font-sans); font-size: var(--text-xs); font-weight: 600; cursor: pointer; transition: color .12s, border-color .12s, background .12s; }
+.sv-tagsbtn:hover { color: var(--accent); border-color: var(--accent-tint); }
+.sv-tagsbtn.is-on { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
+.sv-tagschev { opacity: .7; transition: transform .15s ease; }
+.sv-tagschev--up { transform: rotate(180deg); }
+.sv-tagspop { position: absolute; top: 100%; left: 0; margin-top: 6px; z-index: 12; width: 250px; max-width: 92%; text-align: left; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); padding: 12px; }
+.sv-tagspop-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.sv-tagspop-chips:not(:empty) { margin-bottom: 10px; }
+.sv-tagspop-empty { font-size: var(--text-sm); color: var(--ink-faint); }
+.sv-tagspop-input { width: 100%; border: 1px solid var(--line); outline: none; background: var(--bg); color: var(--ink); border-radius: var(--radius-md); padding: 8px 10px; font-family: var(--font-sans); font-size: var(--text-sm); }
+.sv-tagspop-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-ring); }
 /* keep the immersive header clean: hide tag editing affordances in full screen */
-.app--focus .sv-subdiv, .app--focus .sv-tagchip, .app--focus .sv-tagadd, .app--focus .sv-taginput { display: none; }
+.app--focus .sv-subdiv, .app--focus .sv-tagchip, .app--focus .sv-tagadd, .app--focus .sv-taginput, .app--focus .sv-tagswrap { display: none; }
 
 .sv-scroller { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
 .sv-scroller::-webkit-scrollbar { display: none; }

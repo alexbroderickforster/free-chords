@@ -44,7 +44,7 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
   const [exportOpen, setExportOpen] = useState(false);
   const [hideChords, setHideChords] = useState(prefs.hideChords ?? false);
   const [tagDraft, setTagDraft] = useState('');
-  const [tagEditing, setTagEditing] = useState(false);
+  const [tagsOpen, setTagsOpen] = useState(false);
   const [countdown, setCountdown] = useState(null); // null | seconds remaining | 'done'
   const [leaving, setLeaving] = useState(false); // fading the current song out before a playlist advance
   const cdRef = useRef(null), endedRef = useRef(false), fadeRef = useRef(null); // endedRef: fire the end-of-song advance once
@@ -314,7 +314,7 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
     spreads.current = []; setTuningNudge(false); // fresh tuning read per song
     abortRecording(); setRecording(false); setCountIn(null); setRecError(''); setRecTime(0);
     setRecTake(null); // fresh recorder per song (URL freed by the [recTake] cleanup effect)
-    setTagEditing(false); setTagDraft('');
+    setTagsOpen(false); setTagDraft('');
     setCapo(song.capo || 0);
     setTranspose(prefs.transpose ?? 0);
     setFontSize(prefs.fontSize ?? 28);
@@ -407,6 +407,13 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
     setTagDraft('');
   };
   const removeTag = (t) => onUpdateTags && onUpdateTags(song.id, tags.filter((x) => x !== t));
+  // Close the Tags popover on an outside click.
+  useEffect(() => {
+    if (!tagsOpen) return;
+    const onDown = (e) => { if (!e.target.closest('.sv-tagswrap')) setTagsOpen(false); };
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, [tagsOpen]);
   const scRef = useRef(null), rafRef = useRef(0), accRef = useRef(0), lastRef = useRef(0), popRef = useRef(null);
 
   const updateFocus = () => {
@@ -575,26 +582,30 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
               <span className="sv-status-dot" aria-hidden="true"></span>{STATUS[status].label}
             </button>
             <span className="sv-subdiv" aria-hidden="true"></span>
-            {tags.map((t) => (
-              <span className="sv-tagchip" key={t}>
-                {t}
-                <button aria-label={`Remove tag ${t}`} onClick={() => removeTag(t)}><Icon n="x" s={11} /></button>
-              </span>
-            ))}
-            {tagEditing
-              ? <input
-                  className="sv-taginput"
-                  autoFocus
-                  placeholder="Add tag…"
-                  value={tagDraft}
-                  onChange={(e) => setTagDraft(e.target.value)}
-                  onBlur={() => { addTag(tagDraft); setTagEditing(false); }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); addTag(tagDraft); }
-                    else if (e.key === 'Escape') { setTagDraft(''); setTagEditing(false); }
-                    else if (e.key === 'Backspace' && !tagDraft && tags.length) removeTag(tags[tags.length - 1]);
-                  }} />
-              : <button className="sv-tagadd" aria-label="Add tag" onClick={() => setTagEditing(true)}><Icon n="plus" s={13} />{tags.length ? '' : 'Tag'}</button>}
+            <span className="sv-tagswrap">
+              <button className={'sv-tagsbtn' + (tagsOpen ? ' is-on' : '')} aria-expanded={tagsOpen} aria-label="Tags"
+                onClick={() => { setTagsOpen((o) => !o); setTune(false); setExportOpen(false); }}>
+                <Icon n="tag" s={12} />Tags{tags.length ? ` · ${tags.length}` : ''}
+                <Icon n="chevron-down" s={13} cls={'sv-tagschev' + (tagsOpen ? ' sv-tagschev--up' : '')} />
+              </button>
+              {tagsOpen && (
+                <div className="sv-tagspop" onClick={(e) => e.stopPropagation()}>
+                  <div className="sv-tagspop-chips">
+                    {tags.length === 0 && <span className="sv-tagspop-empty">No tags yet</span>}
+                    {tags.map((t) => (
+                      <span className="sv-tagchip" key={t}>{t}<button aria-label={`Remove tag ${t}`} onClick={() => removeTag(t)}><Icon n="x" s={11} /></button></span>
+                    ))}
+                  </div>
+                  <input className="sv-tagspop-input" autoFocus placeholder="Add a tag…" value={tagDraft}
+                    onChange={(e) => setTagDraft(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); addTag(tagDraft); }
+                      else if (e.key === 'Escape') setTagsOpen(false);
+                      else if (e.key === 'Backspace' && !tagDraft && tags.length) removeTag(tags[tags.length - 1]);
+                    }} />
+                </div>
+              )}
+            </span>
           </div>
         </div>
         <div className="sv-actions">
