@@ -156,7 +156,7 @@ body {
 .ge-raw { color: var(--ink-soft); font-size: 15px; }
 .ge-sectionrow { display: flex; align-items: center; gap: 7px; }
 .ge-sectionrow svg { color: var(--accent); flex: none; }
-.ge-section-input { border: none; background: transparent; outline: none; font-family: var(--font-sans); font-weight: 700; font-size: var(--text-sm); letter-spacing: .06em; text-transform: uppercase; color: var(--accent); width: 100%; padding: 4px 0; }
+.ge-section-input { border: none; background: transparent; outline: none; font-family: var(--font-sans); font-weight: 700; font-size: 16px; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); width: 100%; padding: 4px 0; }
 .ge-section-input::placeholder { color: var(--ink-faint); text-transform: none; letter-spacing: 0; font-weight: 600; }
 .ge-del { position: absolute; top: 6px; right: -2px; width: 24px; height: 24px; border: none; background: transparent; color: var(--ink-faint); border-radius: 50%; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; opacity: 0; transition: opacity .12s; }
 .ge-line:hover .ge-del { opacity: 1; }
@@ -618,7 +618,8 @@ body {
 .sv-tagspop-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .sv-tagspop-chips:not(:empty) { margin-bottom: 10px; }
 .sv-tagspop-empty { font-size: var(--text-sm); color: var(--ink-faint); }
-.sv-tagspop-input { width: 100%; border: 1px solid var(--line); outline: none; background: var(--bg); color: var(--ink); border-radius: var(--radius-md); padding: 8px 10px; font-family: var(--font-sans); font-size: var(--text-sm); }
+/* 16px keeps iOS Safari from auto-zooming when the input is focused. */
+.sv-tagspop-input { width: 100%; border: 1px solid var(--line); outline: none; background: var(--bg); color: var(--ink); border-radius: var(--radius-md); padding: 8px 10px; font-family: var(--font-sans); font-size: 16px; }
 .sv-tagspop-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-ring); }
 /* keep the immersive header clean: hide tag editing affordances in full screen */
 .app--focus .sv-subdiv, .app--focus .sv-tagchip, .app--focus .sv-tagadd, .app--focus .sv-taginput, .app--focus .sv-tagswrap { display: none; }
