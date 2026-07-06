@@ -78,7 +78,7 @@ export function Settings({
   syncConfigured, syncOn, syncStatus, syncError, lastSyncedAt,
   onConnectSync, onSyncNow, onDisconnectSync,
   apiKey, onSaveApiKey,
-  songCount, standalone, ios, canInstall, onInstall,
+  songCount, standalone, ios, iosStandalone, canInstall, onInstall,
   dark, onToggleTheme, onOpenLab,
 }) {
   const fileRef = useRef(null);
@@ -103,8 +103,14 @@ export function Settings({
         ) : !syncOn ? (
           <>
             <p className="set-note">Back up and sync your songbook across devices through your own Google Drive. It stays private to this app.</p>
-            <Button variant="ghost" iconLeft={<Icon n="upload" s={16} />} onClick={onConnectSync}>Sync with Google Drive</Button>
-            {syncError ? <p className="bk-error"><Icon n="circle-alert" s={14} />{syncError}</p> : null}
+            {iosStandalone ? (
+              <p className="bk-note"><Icon n="circle-alert" s={14} />Drive sync isn’t available in the installed app on iPhone (Apple blocks the sign-in popup). Your songbook is saved on this device and loads instantly, even offline — use the Backup file below to move it between devices, or open freechords.app in Safari to use Drive.</p>
+            ) : (
+              <>
+                <Button variant="ghost" iconLeft={<Icon n="upload" s={16} />} onClick={onConnectSync}>Sync with Google Drive</Button>
+                {syncError ? <p className={syncStatus === 'note' ? 'bk-note' : 'bk-error'}><Icon n="circle-alert" s={14} />{syncError}</p> : null}
+              </>
+            )}
           </>
         ) : (
           <div className="set-synced">

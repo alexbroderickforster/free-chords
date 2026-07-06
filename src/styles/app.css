@@ -197,6 +197,9 @@ body {
 .bk-sep { color: var(--ink-faint); }
 .bk-error { display: flex; align-items: flex-start; gap: 6px; color: var(--danger); font-size: var(--text-sm); line-height: 1.45; margin: 8px 2px 0; }
 .bk-error svg { flex: none; margin-top: 2px; }
+/* A calm informational note (e.g. a platform limitation), not a red error. */
+.bk-note { display: flex; align-items: flex-start; gap: 6px; color: var(--ink-soft); font-size: var(--text-sm); line-height: 1.45; margin: 8px 2px 0; }
+.bk-note svg { flex: none; margin-top: 2px; color: var(--ink-faint); }
 
 /* Claude API key field (image import) */
 .bk-key { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); }

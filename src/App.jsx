@@ -348,8 +348,8 @@ export function App() {
   const connectSync = async () => {
     // The Google sign-in popup doesn't work in an installed iOS web app.
     if (isIosStandalone()) {
-      setSyncStatus('error');
-      setSyncError('Open freechords.app in Safari (not the installed app) to connect Google Drive — Apple blocks the sign-in popup in installed web apps.');
+      setSyncStatus('note'); // an Apple limitation, not an error — render it calmly
+      setSyncError('Google Drive sign-in isn’t available in the installed app on iPhone — an Apple limitation on the sign-in popup. To move your songbook, use the Backup file below (Export / Import). For Drive sync, open freechords.app in Safari instead.');
       return;
     }
     try {
@@ -491,7 +491,7 @@ export function App() {
     syncConfigured: syncConfigured(), syncOn, syncStatus, syncError, lastSyncedAt,
     onConnectSync: connectSync, onSyncNow: () => syncNow(true), onDisconnectSync: disconnectSync,
     apiKey, onSaveApiKey: setApiKey,
-    songCount: songs.length, standalone: isStandalone(), ios: isIos(),
+    songCount: songs.length, standalone: isStandalone(), ios: isIos(), iosStandalone: isIosStandalone(),
     canInstall, onInstall: promptInstall,
   };
 
