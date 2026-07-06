@@ -101,6 +101,10 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
 
   // One shared AudioContext for the metronome + the ear-training key ping.
   const ensureAudio = () => {
+    // iOS Safari silences the Web Audio API when the phone is in silent mode,
+    // UNLESS we opt into the "playback" audio session (the media channel music
+    // apps use, which ignores the mute switch). Safari-only; a no-op elsewhere.
+    try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch { /* unsupported */ }
     if (!actx.current) {
       actx.current = new (window.AudioContext || window.webkitAudioContext)();
       // Mobile unlock: play one silent sample the first time (inside the tap that
@@ -586,11 +590,6 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
               </span>
             )}
             {isTab && <span className="sv-pill sv-pill--muted">Tab</span>}
-            <button className={'sv-status sv-status--' + status}
-              aria-label={`Status: ${STATUS[status].label}. Tap to change.`}
-              onClick={() => onCycleStatus && onCycleStatus(song.id)}>
-              <span className="sv-status-dot" aria-hidden="true"></span>{STATUS[status].label}
-            </button>
             <span className="sv-subdiv" aria-hidden="true"></span>
             <span className="sv-tagswrap">
               <button className={'sv-tagsbtn' + (tagsOpen ? ' is-on' : '')} aria-expanded={tagsOpen} aria-label="Tags"
