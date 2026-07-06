@@ -101,7 +101,17 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
 
   // One shared AudioContext for the metronome + the ear-training key ping.
   const ensureAudio = () => {
-    if (!actx.current) actx.current = new (window.AudioContext || window.webkitAudioContext)();
+    if (!actx.current) {
+      actx.current = new (window.AudioContext || window.webkitAudioContext)();
+      // Mobile unlock: play one silent sample the first time (inside the tap that
+      // created the context) so the context actually starts producing sound —
+      // some phone browsers stay muted until a buffer has played in a gesture.
+      try {
+        const b = actx.current.createBuffer(1, 1, 22050);
+        const s = actx.current.createBufferSource();
+        s.buffer = b; s.connect(actx.current.destination); s.start(0);
+      } catch { /* ignore */ }
+    }
     if (actx.current.resume) actx.current.resume();
     return actx.current;
   };
@@ -755,7 +765,6 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
           setPlaying((p) => !p);
         }}><Icon n={playing ? 'pause' : 'play'} s={26} /></button>
         <div className={'sv-speed' + (useBpm ? ' sv-speed--bpm' : '')}>
-          <button className="sv-sbtn" aria-label={useBpm ? 'Slower (−1 BPM)' : 'Slower'} onClick={() => (useBpm ? changeBpm(-1) : changeSpeed(-1))}>−</button>
           <div className="sv-sval">
             {useBpm
               ? <input className="sv-snum sv-bpm-input" type="number" min="30" max="300" inputMode="numeric" aria-label="Beats per minute" value={bpm}
@@ -766,11 +775,15 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
               {useBpm ? 'BPM' : 'Speed'}<span className="sv-modeswap" aria-hidden="true">⇄</span>
             </button>
           </div>
-          <button className="sv-sbtn" aria-label={useBpm ? 'Faster (+1 BPM)' : 'Faster'} onClick={() => (useBpm ? changeBpm(1) : changeSpeed(1))}>+</button>
+          <div className="sv-sbtns">
+            <button className="sv-sbtn" aria-label={useBpm ? 'Faster (+1 BPM)' : 'Faster'} onClick={() => (useBpm ? changeBpm(1) : changeSpeed(1))}>+</button>
+            <button className="sv-sbtn" aria-label={useBpm ? 'Slower (−1 BPM)' : 'Slower'} onClick={() => (useBpm ? changeBpm(-1) : changeSpeed(-1))}>−</button>
+          </div>
           {useBpm && <button ref={tapBtnRef} className="sv-tap" onClick={tapTempo} aria-label="Tap tempo (or press the space bar)" title="Tap to set tempo — or press the space bar">Tap</button>}
         </div>
         {onToggleKeyPing && (
-          <button className={'sv-metro' + (keyPing ? ' is-on' : '')} aria-label={keyPing ? 'Turn key ping off' : 'Turn key ping on'} aria-pressed={keyPing} title="Ear-training key ping — hear the key before you play" onClick={onToggleKeyPing}><Icon n="ear" s={20} /></button>
+          <button className={'sv-metro' + (keyPing ? ' is-on' : '')} aria-label={keyPing ? 'Turn key ping off' : 'Turn key ping on'} aria-pressed={keyPing} title="Ear-training key ping — hear the key before you play"
+            onClick={() => { if (!keyPing && !isTab) pingCurrentKey(); onToggleKeyPing(); }}><Icon n="ear" s={20} /></button>
         )}
         <button className={'sv-metro' + (metronome ? ' is-on' : '')} aria-label={metronome ? 'Turn metronome off' : 'Turn metronome on'} aria-pressed={metronome} title={`Metronome (${metroBpmRef.current} BPM)`} onClick={toggleMetronome}><Icon n="metronome" s={20} /></button>
         {onSetTuningMonitor && (
