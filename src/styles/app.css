@@ -706,10 +706,13 @@ body {
   .sv-sub { justify-content: flex-start; }
 }
 @container svhead (max-width: 680px) {
-  .sv-top { flex-wrap: wrap; row-gap: 6px; padding: 10px 8px 6px; }
-  .sv-actions { margin-left: auto; }
+  .sv-top { flex-wrap: wrap; row-gap: 4px; padding: 8px 6px 6px; }
+  /* Back (order 0) + the action icons share the top row; the title drops below,
+     so the back button no longer wastes a whole row to itself. */
+  .sv-actions { order: 2; margin-left: auto; gap: 0; }
   .sv-title { order: 3; flex-basis: 100%; }
   .sv-name { font-size: 18px; }
+  .sv-ic { width: 40px; height: 40px; }
 }
 
 /* ---- Tuner ---- */

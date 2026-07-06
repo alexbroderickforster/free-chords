@@ -279,12 +279,15 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
   const metroClick = (time, accent) => {
     const ctx = actx.current; if (!ctx) return;
     const osc = ctx.createOscillator(), g = ctx.createGain();
-    osc.frequency.value = accent ? 1600 : 1050;
+    // Triangle carries more harmonics than a sine, so the tick cuts through on a
+    // phone speaker; the louder gain + slightly longer decay make it easier to hear.
+    osc.type = 'triangle';
+    osc.frequency.value = accent ? 1800 : 1200;
     g.gain.setValueAtTime(0.0001, time);
-    g.gain.exponentialRampToValueAtTime(accent ? 0.5 : 0.3, time + 0.001);
-    g.gain.exponentialRampToValueAtTime(0.0001, time + 0.04);
+    g.gain.exponentialRampToValueAtTime(accent ? 0.85 : 0.6, time + 0.001);
+    g.gain.exponentialRampToValueAtTime(0.0001, time + 0.05);
     osc.connect(g).connect(ctx.destination);
-    osc.start(time); osc.stop(time + 0.05);
+    osc.start(time); osc.stop(time + 0.06);
   };
   const metroSchedule = () => {
     const ctx = actx.current; if (!ctx) return;
@@ -611,7 +614,6 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
           {onToggleFocus && (
             <button className="sv-ic sv-ic--focus" aria-label={focusMode ? 'Exit full screen (Esc)' : 'Full-screen play mode'} title={focusMode ? 'Exit full screen (Esc)' : 'Full-screen play mode'} onClick={onToggleFocus}><Icon n={focusMode ? 'minimize-2' : 'maximize-2'} s={20} /></button>
           )}
-          <button className="sv-ic" aria-label="Light or dark" onClick={onToggleTheme}><Icon n={dark ? 'sun' : 'moon'} s={20} /></button>
         </div>
         {tune && !isTab && (
           <div className="sv-tune">
