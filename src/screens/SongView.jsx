@@ -45,6 +45,7 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
   const [hideChords, setHideChords] = useState(prefs.hideChords ?? false);
   const [tagDraft, setTagDraft] = useState('');
   const [tagsOpen, setTagsOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false); // dock "⋯" menu (key ping + tuning check)
   const [countdown, setCountdown] = useState(null); // null | seconds remaining | 'done'
   const [leaving, setLeaving] = useState(false); // fading the current song out before a playlist advance
   const cdRef = useRef(null), endedRef = useRef(false), fadeRef = useRef(null); // endedRef: fire the end-of-song advance once
@@ -328,7 +329,7 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
     spreads.current = []; setTuningNudge(false); // fresh tuning read per song
     abortRecording(); setRecording(false); setCountIn(null); setRecError(''); setRecTime(0);
     setRecTake(null); // fresh recorder per song (URL freed by the [recTake] cleanup effect)
-    setTagsOpen(false); setTagDraft('');
+    setTagsOpen(false); setTagDraft(''); setMoreOpen(false);
     setCapo(song.capo || 0);
     setTranspose(prefs.transpose ?? 0);
     setFontSize(prefs.fontSize ?? 28);
@@ -428,6 +429,13 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
     document.addEventListener('mousedown', onDown);
     return () => document.removeEventListener('mousedown', onDown);
   }, [tagsOpen]);
+  // Close the dock "⋯" menu on an outside click.
+  useEffect(() => {
+    if (!moreOpen) return;
+    const onDown = (e) => { if (!e.target.closest('.sv-morewrap')) setMoreOpen(false); };
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, [moreOpen]);
   const scRef = useRef(null), rafRef = useRef(0), accRef = useRef(0), lastRef = useRef(0), popRef = useRef(null);
 
   const updateFocus = () => {
@@ -780,20 +788,37 @@ export function SongView({ song, onBack, onArtist, dark, onToggleTheme, focusMod
           </div>
           {useBpm && <button ref={tapBtnRef} className="sv-tap" onClick={tapTempo} aria-label="Tap tempo (or press the space bar)" title="Tap to set tempo — or press the space bar">Tap</button>}
         </div>
-        {onToggleKeyPing && (
-          <button className={'sv-metro' + (keyPing ? ' is-on' : '')} aria-label={keyPing ? 'Turn key ping off' : 'Turn key ping on'} aria-pressed={keyPing} title="Ear-training key ping — hear the key before you play"
-            onClick={() => { if (!keyPing && !isTab) pingCurrentKey(); onToggleKeyPing(); }}><Icon n="ear" s={20} /></button>
-        )}
         <button className={'sv-metro' + (metronome ? ' is-on' : '')} aria-label={metronome ? 'Turn metronome off' : 'Turn metronome on'} aria-pressed={metronome} title={`Metronome (${metroBpmRef.current} BPM)`} onClick={toggleMetronome}><Icon n="metronome" s={20} /></button>
-        {onSetTuningMonitor && (
-          <button className={'sv-metro sv-mic' + (tuningMonitor ? ' is-on' : '') + (tuningMonitor && playing ? ' sv-mic--live' : '')}
-            aria-label={tuningMonitor ? 'Turn tuning check off' : 'Turn tuning check on'} aria-pressed={tuningMonitor}
-            title="Tuning check — listens while you play and flags if the guitar drifts out of tune"
-            onClick={() => onSetTuningMonitor(!tuningMonitor)}><Icon n="mic" s={20} /></button>
-        )}
         <button className={'sv-metro sv-rec' + (recording || countIn != null ? ' is-rec' : '')} aria-label={recording || countIn != null ? 'Stop recording' : 'Record a scratch take'} aria-pressed={recording || countIn != null}
           title={recording || countIn != null ? 'Stop recording' : 'Record yourself playing along — saves an audio file'}
           onClick={() => (recording || countIn != null ? stopRecording() : startRecording())}><Icon n={recording || countIn != null ? 'square' : 'circle'} s={recording || countIn != null ? 15 : 18} /></button>
+        {(onToggleKeyPing || onSetTuningMonitor) && (
+          <span className="sv-morewrap">
+            <button className={'sv-metro sv-more' + ((keyPing || tuningMonitor) ? ' sv-more--active' : '') + (tuningMonitor && playing ? ' sv-mic--live' : '')}
+              aria-label="More playback options" aria-expanded={moreOpen} title="More — key ping, tuning check"
+              onClick={() => setMoreOpen((o) => !o)}><Icon n="more-horizontal" s={20} /></button>
+            {moreOpen && (
+              <div className="sv-morepop" onClick={(e) => e.stopPropagation()}>
+                {onToggleKeyPing && (
+                  <button className={'sv-morerow' + (keyPing ? ' is-on' : '')} aria-pressed={keyPing}
+                    onClick={() => { if (!keyPing && !isTab) pingCurrentKey(); onToggleKeyPing(); }}>
+                    <Icon n="ear" s={18} cls="sv-morerow-ic" />
+                    <span className="sv-morerow-txt"><b>Key ping</b><small>Hear the key before you play</small></span>
+                    {keyPing && <Icon n="check" s={16} cls="sv-morerow-chk" />}
+                  </button>
+                )}
+                {onSetTuningMonitor && (
+                  <button className={'sv-morerow' + (tuningMonitor ? ' is-on' : '')} aria-pressed={tuningMonitor}
+                    onClick={() => onSetTuningMonitor(!tuningMonitor)}>
+                    <Icon n="mic" s={18} cls="sv-morerow-ic" />
+                    <span className="sv-morerow-txt"><b>Tuning check</b><small>Flag if the guitar drifts out of tune</small></span>
+                    {tuningMonitor && <Icon n="check" s={16} cls="sv-morerow-chk" />}
+                  </button>
+                )}
+              </div>
+            )}
+          </span>
+        )}
       </div>
 
       <div className="sv-chordpop" ref={popRef}></div>

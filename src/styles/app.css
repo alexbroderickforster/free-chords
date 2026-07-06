@@ -666,6 +666,18 @@ body {
 .sv-metro:hover { background: var(--surface-hover); color: var(--ink); }
 .sv-metro.is-on { background: var(--accent-soft); color: var(--accent); animation: sv-metro-pulse 1s ease-in-out infinite; }
 @keyframes sv-metro-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.55; } }
+/* Dock "⋯" menu — tucks the occasional key-ping + tuning-check toggles away */
+.sv-morewrap { position: relative; display: inline-flex; }
+.sv-more--active { background: var(--accent-soft); color: var(--accent); }
+.sv-morepop { position: absolute; bottom: calc(100% + 12px); right: -4px; z-index: 9; width: 250px; max-width: 78vw; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); padding: 6px; }
+.sv-morerow { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; border: none; background: transparent; color: var(--ink); cursor: pointer; padding: 9px 10px; border-radius: var(--radius-md); }
+.sv-morerow:hover { background: var(--surface-hover); }
+.sv-morerow-ic { flex: none; color: var(--ink-soft); }
+.sv-morerow.is-on .sv-morerow-ic { color: var(--accent); }
+.sv-morerow-txt { display: flex; flex-direction: column; min-width: 0; flex: 1; gap: 1px; }
+.sv-morerow-txt b { font-size: var(--text-sm); font-weight: 600; }
+.sv-morerow-txt small { font-size: var(--text-xs); color: var(--ink-faint); }
+.sv-morerow-chk { flex: none; color: var(--accent); }
 .sv-speed { display: flex; align-items: center; gap: 3px; padding-left: 2px; }
 .sv-sbtns { display: inline-flex; flex-direction: column; }
 .sv-sbtn { width: 32px; height: 22px; border: none; background: transparent; cursor: pointer; color: var(--ink-soft); font-size: 17px; line-height: 1; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; transition: background .12s, color .12s; }
