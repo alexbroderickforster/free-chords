@@ -9,9 +9,8 @@ through it all.
 
 **No ads, no clutter, no upsells, anywhere, ever.**
 
-**▶ Live: <https://freechords.app>** — open it on a
-phone or tablet and use *Add to Home Screen* to install it (works offline after
-the first load).
+**▶ Live: <https://freechords.app>** — works in any browser on
+phone, tablet, or desktop, and keeps working **offline** after the first load.
 
 ## Screenshots
 
@@ -124,8 +123,10 @@ Relaxed).
   optional, self-owned, no backend, and it queues offline. See **Feedback** below.
 - **Responsive** — sidebar on desktop, bottom tab bar on mobile — with a warm
   light and low-light dark mode.
-- **Installable PWA** that runs **fully offline** (app shell and fonts are
-  self-hosted and cached).
+- **Offline-capable** — runs **fully offline** after the first load (the app
+  shell and fonts are self-hosted and cached by a service worker). It runs in
+  the browser; a home-screen shortcut opens the browser too, so there's no
+  separate installed-app copy to fall out of sync.
 - **On-device by default.** Everything is stored in your own browser; nothing is
   uploaded or shared unless you choose to sync or share.
 - **Backup & sync.** Export/import your songbook as a file, or connect your own
@@ -186,10 +187,11 @@ shared, and every visitor to a hosted copy gets their own private songbook.
 For cross-device use there's **optional** Google Drive sync (see below); it's
 off until you set it up, and the app stays fully usable and offline without it.
 
-To **install on a phone or tablet**, the app needs to be served over HTTPS
-(install/offline is allowed on `https://…` or `localhost`). Any free static
-host — Netlify, Vercel, GitHub Pages — works; build with `npm run build` and
-deploy the `dist/` folder.
+For **offline use on a phone or tablet**, serve it over HTTPS (offline caching
+is allowed on `https://…` or `localhost`). Any free static host — Netlify,
+Vercel, GitHub Pages — works; build with `npm run build` and deploy the `dist/`
+folder. A home-screen shortcut opens it in the browser (so it shares the same
+storage and Drive sync — no separate installed-app silo).
 
 ## Feedback (optional)
 

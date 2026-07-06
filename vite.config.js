@@ -29,7 +29,11 @@ export default defineConfig(() => {
           description: 'A calm, ad-free personal guitar chord app — chords over lyrics.',
           theme_color: '#3B3A8E',
           background_color: '#F6F0E3',
-          display: 'standalone',
+          // 'browser' (not 'standalone'): a home-screen shortcut opens in the
+          // browser rather than a separate installed-app context. On iPhone that
+          // means it opens in Safari — same storage, Drive sync works, no silo.
+          // The app still caches and runs offline (service worker is unaffected).
+          display: 'browser',
           orientation: 'any',
           id: base,
           start_url: base,

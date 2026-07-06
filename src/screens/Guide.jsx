@@ -81,7 +81,7 @@ export function Guide({ firstRun = false, onGo, onDone, onFeedback }) {
             Reference tones plus live mic tuning that locks onto each string. Set how tight "in tune" should be — perfect tuning never lasts.
           </Feature>
           <Feature icon="wifi-off" title="Offline &amp; backup" go="settings" onGo={onGo} action="Open settings">
-            Everything works with no signal. Install it to your home screen, back up to a file, or sync across devices with your own Google Drive. Export a song as an offline HTML player or a printable PDF.
+            Everything works with no signal — your songbook is stored on your device and loads instantly. Back up to a file, or sync across devices with your own Google Drive. Export a song as an offline HTML player or a printable PDF.
           </Feature>
         </div>
       </section>

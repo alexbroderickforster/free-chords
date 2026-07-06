@@ -136,14 +136,10 @@ export function Settings({
         <p className="set-note">
           Everything is stored here and plays with no signal — good for camping or a dead zone.{syncOn ? ' Pull the latest from Drive before you head out:' : ''}
         </p>
-        <div className="set-buttons">
-          {syncOn && <Button variant="ghost" size="sm" iconLeft={<Icon n="download" s={16} />} onClick={onSyncNow}>Update from Drive</Button>}
-          {!standalone && (canInstall
-            ? <Button variant="ghost" size="sm" iconLeft={<Icon n="plus" s={16} />} onClick={onInstall}>Add to home screen</Button>
-            : null)}
-        </div>
-        {!standalone && !canInstall && ios && (
-          <p className="set-hint">To install for offline: tap <b>Share</b>, then <b>Add to Home Screen</b>.</p>
+        {syncOn && (
+          <div className="set-buttons">
+            <Button variant="ghost" size="sm" iconLeft={<Icon n="download" s={16} />} onClick={onSyncNow}>Update from Drive</Button>
+          </div>
         )}
       </section>
 
