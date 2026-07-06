@@ -104,7 +104,7 @@ export function Settings({
           <>
             <p className="set-note">Back up and sync your songbook across devices through your own Google Drive. It stays private to this app.</p>
             {iosStandalone ? (
-              <p className="bk-note"><Icon n="circle-alert" s={14} />Drive sync isn’t available in the installed app on iPhone (Apple blocks the sign-in popup). Your songbook is saved on this device and loads instantly, even offline — use the Backup file below to move it between devices, or open freechords.app in Safari to use Drive.</p>
+              <p className="bk-note"><Icon n="circle-alert" s={14} />Drive sync isn’t available in the installed app on iPhone (Apple blocks the sign-in popup), and this app has its own storage separate from Safari. To bring your existing songbook in, <b>Export</b> a backup from Safari or your computer, then <b>Import</b> it below. (In Safari, freechords.app keeps syncing with Drive normally.)</p>
             ) : (
               <>
                 <Button variant="ghost" iconLeft={<Icon n="upload" s={16} />} onClick={onConnectSync}>Sync with Google Drive</Button>
