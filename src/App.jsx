@@ -10,6 +10,7 @@ import { AddImport } from './screens/AddImport.jsx';
 import { Practice } from './screens/Practice.jsx';
 import { TunerView } from './screens/TunerView.jsx';
 import { TuningLab } from './screens/TuningLab.jsx';
+import { ChordLab } from './screens/ChordLab.jsx';
 import { Training } from './screens/Training.jsx';
 import { Notation } from './screens/Notation.jsx';
 import { Guide } from './screens/Guide.jsx';
@@ -516,7 +517,7 @@ export function App() {
 
   // Where the user is right now — attached to any feedback they send so a report
   // arrives with the screen (and song) it came from.
-  const TAB_LABELS = { songs: 'Songs', playlists: 'Playlists', add: 'Add a song', practice: 'Practice', training: 'Training', tuner: 'Tuner', guide: 'Guide', settings: 'Settings', tuninglab: 'Tuning lab' };
+  const TAB_LABELS = { songs: 'Songs', playlists: 'Playlists', add: 'Add a song', practice: 'Practice', training: 'Training', tuner: 'Tuner', guide: 'Guide', settings: 'Settings', tuninglab: 'Tuning lab', chordlab: 'Chord detector' };
   const feedbackContext = {
     page: song ? (editing ? `Editing “${song.title}”` : `“${song.title}”`) : (TAB_LABELS[tab] || tab),
     song: song ? song.title : '',
@@ -538,7 +539,8 @@ export function App() {
         {tab === 'guide' && <Guide firstRun={!seenGuide} onGo={goTab} onFeedback={openFeedback} onDone={() => { if (!seenGuide) { setSeenGuide(true); saveSeenGuide(true); } goTab('songs'); }} />}
         {tab === 'tuner' && <TunerView />}
         {tab === 'tuninglab' && <TuningLab onBack={() => setTab('settings')} />}
-        {tab === 'settings' && <Settings {...backupProps} dark={dark} onToggleTheme={toggleTheme} onOpenLab={() => setTab('tuninglab')} />}
+        {tab === 'chordlab' && <ChordLab onBack={() => setTab('settings')} />}
+        {tab === 'settings' && <Settings {...backupProps} dark={dark} onToggleTheme={toggleTheme} onOpenLab={() => setTab('tuninglab')} onOpenChordLab={() => setTab('chordlab')} />}
       </main>
     );
 

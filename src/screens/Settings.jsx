@@ -79,7 +79,7 @@ export function Settings({
   onConnectSync, onSyncNow, onDisconnectSync,
   apiKey, onSaveApiKey,
   songCount, standalone, ios, iosStandalone, canInstall, onInstall,
-  dark, onToggleTheme, onOpenLab,
+  dark, onToggleTheme, onOpenLab, onOpenChordLab,
 }) {
   const fileRef = useRef(null);
   const pick = (e) => {
@@ -167,12 +167,13 @@ export function Settings({
       </section>
 
       {/* Experimental */}
-      {onOpenLab && (
+      {(onOpenLab || onOpenChordLab) && (
         <section className="set-section">
           <h2 className="set-h">Experimental</h2>
-          <p className="set-note">Rough ideas we’re trying out. A tuning detector that listens while you play and tells you if the guitar sounds out of tune with itself — a proof of concept for now.</p>
+          <p className="set-note">Rough ideas we’re trying out — proofs of concept for now. A tuning detector that listens while you play and tells you if the guitar sounds out of tune with itself, and a chord detector that listens to a song (mic or an audio file) and prints the chords it hears.</p>
           <div className="set-buttons">
-            <Button variant="ghost" size="sm" iconLeft={<Icon n="mic" s={16} />} onClick={onOpenLab}>Tuning detector</Button>
+            {onOpenLab && <Button variant="ghost" size="sm" iconLeft={<Icon n="mic" s={16} />} onClick={onOpenLab}>Tuning detector</Button>}
+            {onOpenChordLab && <Button variant="ghost" size="sm" iconLeft={<Icon n="music" s={16} />} onClick={onOpenChordLab}>Chord detector</Button>}
           </div>
         </section>
       )}

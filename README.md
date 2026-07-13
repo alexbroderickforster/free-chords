@@ -166,9 +166,10 @@ src/
   components/   design-system primitives (Button, Card, Tag, SideNav, …) + Icon
   screens/      Library, SongView, SongEdit, AddImport, GridEditor, Playlists,
                 Practice (A/B loops), Training (ear trainer), Notation, TunerView,
-                Settings, Guide, TuningLab (experimental)
+                Settings, Guide, TuningLab + ChordLab (experimental)
   lib/          music, chordpro (ChordSheetJS), gridedit (grid ⇄ ChordPro),
-                chords (chords-db), tuning (chord/tuning DSP), loop, imageImport
+                chords (chords-db), tuning (chord/tuning DSP),
+                chorddetect (chroma + triad matching, experimental), loop, imageImport
                 (Claude vision / OCR), score + scoreRender (VexFlow) + scorePlayback
                 + scoreExport, songbookExport, feedback, storage, backup, sync
   data/         sample songbook
