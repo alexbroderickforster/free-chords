@@ -50,6 +50,20 @@ function friendlySyncError(e) {
   return m || 'Sync failed for an unknown reason.';
 }
 
+// Save a piece of state whenever it actually changes — never the value we just
+// loaded. Writing that back is at best a no-op; at worst it writes a fallback
+// (the sample songbook, an empty list) over storage that was merely *unreadable*,
+// turning a transient glitch into permanent loss and destroying the evidence
+// before it can be recovered. Compared by identity, not by a first-run flag, so
+// StrictMode's double-invoked effects can't slip a write through.
+function usePersist(value, save) {
+  const loaded = useRef(value);
+  useEffect(() => {
+    if (value === loaded.current) return; // untouched since load — nothing to persist
+    save(value);
+  }, [value]);
+}
+
 export function App() {
   const [seenGuide, setSeenGuide] = useState(() => loadSeenGuide());
   const [tab, setTab] = useState(() => (loadSeenGuide() ? 'songs' : 'guide')); // first launch opens the guide
@@ -91,19 +105,20 @@ export function App() {
   useEffect(() => { saveThemeAt(themeAt); }, [themeAt]);
 
   // Persist the songbook, known-tags list, playback prefs, and deletions.
-  useEffect(() => { saveSongs(songs); }, [songs]);
-  useEffect(() => { saveTags(knownTags); }, [knownTags]);
-  useEffect(() => { savePrefs(prefs); }, [prefs]);
-  useEffect(() => { saveDeletions(deletions); }, [deletions]);
-  useEffect(() => { savePlaylists(playlists); }, [playlists]);
-  useEffect(() => { savePlaylistDeletions(playlistDeletions); }, [playlistDeletions]);
-  useEffect(() => { saveLoops(loops); }, [loops]);
-  useEffect(() => { saveLoopDeletions(loopDeletions); }, [loopDeletions]);
-  useEffect(() => { saveScores(scores); }, [scores]);
-  useEffect(() => { saveScoreDeletions(scoreDeletions); }, [scoreDeletions]);
-  useEffect(() => { saveKeyPing(keyPing); }, [keyPing]);
-  useEffect(() => { saveTuningMonitor(tuningMonitor); }, [tuningMonitor]);
-  useEffect(() => { saveApiKey(apiKey); }, [apiKey]);
+  // (usePersist deliberately skips the mount write — see its note.)
+  usePersist(songs, saveSongs);
+  usePersist(knownTags, saveTags);
+  usePersist(prefs, savePrefs);
+  usePersist(deletions, saveDeletions);
+  usePersist(playlists, savePlaylists);
+  usePersist(playlistDeletions, savePlaylistDeletions);
+  usePersist(loops, saveLoops);
+  usePersist(loopDeletions, saveLoopDeletions);
+  usePersist(scores, saveScores);
+  usePersist(scoreDeletions, saveScoreDeletions);
+  usePersist(keyPing, saveKeyPing);
+  usePersist(tuningMonitor, saveTuningMonitor);
+  usePersist(apiKey, saveApiKey);
 
   // Capture the browser's install prompt so "Add to home screen" (Chrome/Android)
   // can be offered from the Offline section. iOS has no such event (Share sheet).

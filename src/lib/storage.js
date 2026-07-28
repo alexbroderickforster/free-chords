@@ -5,11 +5,23 @@ const NS = 'freechords:v2';
 const key = (name) => `${NS}:${name}`;
 
 function read(name, fallback) {
+  let raw;
   try {
-    const raw = localStorage.getItem(key(name));
-    if (raw == null) return fallback;
+    raw = localStorage.getItem(key(name));
+  } catch {
+    return fallback; // storage unavailable (private mode, disabled)
+  }
+  if (raw == null) return fallback;
+  try {
     return JSON.parse(raw);
   } catch {
+    // Unreadable JSON. Keep the raw text under a `.corrupt` key before anything
+    // writes a fallback over it — a mangled songbook can be repaired by hand,
+    // but only if we don't throw the evidence away. Keep the FIRST copy taken.
+    try {
+      const bk = key(name + '.corrupt');
+      if (localStorage.getItem(bk) == null) localStorage.setItem(bk, raw);
+    } catch { /* storage full — nothing more we can do */ }
     return fallback;
   }
 }

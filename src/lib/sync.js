@@ -207,10 +207,18 @@ async function findFile(token) {
   return j.files && j.files[0];
 }
 
+// Returns the remote doc, or null ONLY when the file exists but is still empty
+// (createFile makes it with no content, so the first sync after connecting sees
+// a 0-byte file). Anything else throws: callers read null as "no remote to merge"
+// and go on to write local over it, so swallowing a transient Drive error here
+// would silently replace a good backup with whatever this device happens to hold.
 async function downloadFile(token, id) {
   const r = await fetch(`https://www.googleapis.com/drive/v3/files/${id}?alt=media`, { headers: auth(token) });
-  if (!r.ok) return null;
-  return r.json();
+  if (!r.ok) throw await driveError('Drive download failed', r);
+  const text = await r.text();
+  if (!text.trim()) return null;
+  try { return JSON.parse(text); }
+  catch { throw new Error('Drive download failed (backup file is unreadable)'); }
 }
 
 async function createFile(token) {
