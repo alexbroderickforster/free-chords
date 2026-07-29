@@ -81,7 +81,10 @@ export function Guide({ firstRun = false, onGo, onDone, onFeedback }) {
             Reference tones plus live mic tuning that locks onto each string. Set how tight "in tune" should be — perfect tuning never lasts.
           </Feature>
           <Feature icon="wifi-off" title="Offline &amp; backup" go="settings" onGo={onGo} action="Open settings">
-            Everything works with no signal — your songbook is stored on your device and loads instantly. Back up to a file, or sync across devices with your own Google Drive. Export a song as an offline HTML player or a printable PDF.
+            Everything works with no signal — your songbook is stored on your device and loads instantly. Export a song as an offline HTML player or a printable PDF.
+          </Feature>
+          <Feature icon="download" title="Keeping your songs safe" go="settings" onGo={onGo} action="Open settings">
+            Your songbook lives in this browser, and browsers do clear that out on their own — Safari wipes it after about a week away. So save a <b>backup file</b> now and then (the app will remind you), or turn on Google Drive sync to keep a copy off this device. FreeChords also keeps a daily on-device snapshot, so an accidental delete can be undone from Settings.
           </Feature>
         </div>
       </section>

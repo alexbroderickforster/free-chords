@@ -132,6 +132,13 @@ Relaxed).
 - **Backup & sync.** Export/import your songbook as a file, or connect your own
   **Google Drive** for optional, offline-first cross-device sync (a private app
   folder, no server — see **Cross-device sync** below).
+- **Backup safety net.** Browser storage is not permanent — Safari clears a
+  site's local data after ~7 days without a visit — so an exported file (or
+  Drive sync) is the only durable copy. The app asks the browser for persistent
+  storage, reminds you to save a backup once you have songs worth losing, and
+  keeps a daily on-device snapshot so an accidental delete can be undone from
+  **Settings → Recover songs**. Unreadable storage is preserved under a
+  `.corrupt` key rather than overwritten, so a mangled songbook stays fixable.
 
 ## Tech
 

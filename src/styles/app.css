@@ -80,6 +80,12 @@ body {
 .lib-welcome-body { color: var(--ink-soft); font-size: var(--text-sm); line-height: 1.55; margin: 0 0 14px; max-width: 52ch; }
 .lib-welcome-x { position: absolute; top: 10px; right: 10px; display: inline-flex; padding: 6px; border: none; background: none; cursor: pointer; color: var(--ink-faint); border-radius: 50%; transition: color .12s, background .12s; }
 .lib-welcome-x:hover { color: var(--ink); background: color-mix(in oklab, var(--accent) 14%, transparent); }
+/* Backup reminder — warmer than the welcome card so it reads as "act on me",
+   without the alarm of an error state. */
+.lib-backup { position: relative; background: var(--good-soft, var(--accent-soft)); border: 1px solid color-mix(in oklab, var(--good, var(--accent)) 26%, transparent); border-radius: var(--radius-lg); padding: 18px 20px; margin-bottom: 16px; }
+.lib-backup-head { display: flex; align-items: center; gap: 8px; color: var(--ink); margin-bottom: 6px; }
+.lib-backup-head .lib-welcome-title { margin-bottom: 0; }
+.lib-backup-actions { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
 
 /* Empty-songbook call to action */
 .lib-emptystate { text-align: center; padding: 48px 16px; display: flex; flex-direction: column; align-items: center; gap: 6px; }
@@ -191,6 +197,8 @@ body {
 .bk-status--error { color: var(--danger); }
 .bk-status--error .bk-dot { background: var(--danger); }
 .bk-when { font-size: var(--text-xs); color: var(--ink-faint); margin: 3px 0 0 16px; }
+/* "No backup file saved yet" — a nudge, not an error, so it lifts out of faint. */
+.bk-when--never { color: var(--ink-soft); font-weight: 600; }
 .bk-sync-actions { display: flex; align-items: center; gap: 8px; margin: 8px 0 0 16px; }
 .bk-link { border: none; background: none; padding: 0; cursor: pointer; color: var(--accent); font-family: var(--font-sans); font-size: var(--text-sm); font-weight: 600; }
 .bk-link:hover { color: var(--accent-hover); text-decoration: underline; }

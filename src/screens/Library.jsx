@@ -71,7 +71,7 @@ function SongRow({ song, onOpen, onArtist, onTag, activeTags, onToggleStar, onCy
   );
 }
 
-export function Library({ songs: songsProp, tags: knownTags = [], onOpen, onAdd, artistFilter, onClearArtist, onArtist, onToggleStar, onCycleStatus, onAddToPlaylist, backupSlot }) {
+export function Library({ songs: songsProp, tags: knownTags = [], onOpen, onAdd, artistFilter, onClearArtist, onArtist, onToggleStar, onCycleStatus, onAddToPlaylist, backupSlot, backupNudge }) {
   const [q, setQ] = useState('');
   const [activeTags, setActiveTags] = useState([]);
   const [sort, setSort] = useState('recent');
@@ -143,6 +143,20 @@ export function Library({ songs: songsProp, tags: knownTags = [], onOpen, onAdd,
           <div className="lib-welcome-title">Welcome to your songbook</div>
           <p className="lib-welcome-body">There's one sample song to show how a chord sheet looks. Add your own — paste chords copied from anywhere and FreeChords lines them up above the lyrics. Everything you add stays on this device.</p>
           {onAdd && <Button variant="primary" size="sm" iconLeft={<Icon n="plus" s={17} />} onClick={onAdd}>Add your first song</Button>}
+        </div>
+      )}
+
+      {!artistFilter && backupNudge && (
+        <div className="lib-backup">
+          <button className="lib-welcome-x" aria-label="Dismiss" onClick={backupNudge.onSnooze}><Icon n="x" s={16} /></button>
+          <div className="lib-backup-head"><Icon n="download" s={16} /><span className="lib-welcome-title">Save a copy of your songbook</span></div>
+          <p className="lib-welcome-body">
+            Your {backupNudge.count} songs live only in this browser, and browsers do clear that out on their own — Safari wipes it after about a week away. {backupNudge.never ? 'You haven’t saved a backup file yet.' : 'Your last backup file is over a month old.'} It takes one tap.
+          </p>
+          <div className="lib-backup-actions">
+            <Button variant="primary" size="sm" iconLeft={<Icon n="download" s={16} />} onClick={backupNudge.onExport}>Back up now</Button>
+            <button type="button" className="bk-link" onClick={backupNudge.onSnooze}>Remind me later</button>
+          </div>
         </div>
       )}
 

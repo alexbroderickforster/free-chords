@@ -131,6 +131,56 @@ export function loadScoreDeletions() {
 }
 export function saveScoreDeletions(d) { write('scoreDeletions', d); }
 
+// ---- Backup safety net --------------------------------------------------
+// Everything above lives in script-writable storage, which browsers evict:
+// Safari clears a site's local data after ~7 days without a visit, silently.
+// So a copy kept in this browser is a convenience, NOT a backup — only an
+// exported file survives that. These helpers (a) ask to be exempted from
+// eviction, (b) keep a rolling snapshot so an accidental delete is undoable,
+// and (c) track exports so the app can nudge before it's too late.
+
+// Best-effort: ask the browser not to evict this origin. Chrome grants it based
+// on engagement; Safari largely ignores it. A no-op where unsupported.
+export async function requestPersistence() {
+  try {
+    if (!navigator.storage || !navigator.storage.persist) return null;
+    if (await navigator.storage.persisted()) return true;
+    return await navigator.storage.persist();
+  } catch { return null; }
+}
+
+// When the songbook was last written to a backup file (0 = never).
+export function loadLastExportAt() { return read('lastExportAt', 0) || 0; }
+export function saveLastExportAt(v) { write('lastExportAt', v || 0); }
+
+// When the backup reminder was last dismissed.
+export function loadBackupSnoozeAt() { return read('backupSnoozeAt', 0) || 0; }
+export function saveBackupSnoozeAt(v) { write('backupSnoozeAt', v || 0); }
+
+// Rolling snapshot of the songbook: { at, songs }. Same storage bucket as the
+// rest, so it does NOT survive eviction — it exists to undo an accidental mass
+// delete or a corrupted songbook, not to replace a real backup file.
+export function loadSnapshot() {
+  const d = read('snapshot', null);
+  return d && Array.isArray(d.songs) && d.songs.length ? d : null;
+}
+
+// Writes at most once a day, and refuses to shrink: a snapshot holding more
+// songs than the current book is kept (for 30 days), so a wiped songbook — or
+// one that fell back to the sample — can never overwrite the good copy.
+const DAY_MS = 86400000;
+export function saveSnapshot(songs) {
+  if (!Array.isArray(songs) || !songs.length) return false;
+  const prev = loadSnapshot();
+  const now = Date.now();
+  if (prev) {
+    if (now - prev.at < 20 * 3600000) return false;
+    if (prev.songs.length > songs.length && now - prev.at < 30 * DAY_MS) return false;
+  }
+  write('snapshot', { at: now, songs });
+  return true;
+}
+
 // Saved practice loops: [{ id, name, kind, id/url/name, a, b, speed, preRoll, createdAt, updatedAt }]
 export function loadLoops() {
   const stored = read('loops', null);

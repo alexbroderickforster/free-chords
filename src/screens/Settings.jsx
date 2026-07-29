@@ -16,6 +16,18 @@ function formatTime(ts) {
   catch { return ''; }
 }
 
+// "today" / "yesterday" / "12 Mar" — enough to judge whether a backup is stale.
+function formatDate(ts) {
+  if (!ts) return '';
+  try {
+    const days = Math.floor((Date.now() - ts) / 86400000);
+    if (days <= 0) return 'today';
+    if (days === 1) return 'yesterday';
+    if (days < 30) return `${days} days ago`;
+    return new Date(ts).toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' });
+  } catch { return ''; }
+}
+
 // Compact Google Drive status for the sidebar footer — tap to open Settings.
 export function SyncBadge({ syncConfigured, syncOn, syncStatus, onOpen }) {
   if (!syncConfigured) return null;
@@ -74,7 +86,7 @@ export function ApiKeyField({ apiKey, onSave }) {
 }
 
 export function Settings({
-  onExport, onImport,
+  onExport, onImport, lastExportAt, snapshotAt, restorable, onRestoreSnapshot,
   syncConfigured, syncOn, syncStatus, syncError, lastSyncedAt,
   onConnectSync, onSyncNow, onDisconnectSync,
   apiKey, onSaveApiKey,
@@ -146,13 +158,31 @@ export function Settings({
       {/* Backup */}
       <section className="set-section">
         <h2 className="set-h">Backup file</h2>
-        <p className="set-note">Save your whole songbook to a file, or restore one — a portable backup that doesn’t need Drive.</p>
+        <p className="set-note">Save your whole songbook to a file, or restore one — a portable backup that doesn’t need Drive. This is the only copy that survives a browser clearing its storage, so it’s worth keeping somewhere safe.</p>
         <div className="set-buttons">
           <Button variant="ghost" size="sm" iconLeft={<Icon n="download" s={16} />} onClick={onExport}>Export</Button>
           <Button variant="ghost" size="sm" iconLeft={<Icon n="upload" s={16} />} onClick={() => fileRef.current && fileRef.current.click()}>Import</Button>
           <input ref={fileRef} type="file" accept="application/json,.json" hidden onChange={pick} />
         </div>
+        <div className={'bk-when' + (lastExportAt ? '' : ' bk-when--never')}>
+          {lastExportAt ? `Last backup file saved ${formatDate(lastExportAt)}` : 'No backup file saved yet'}
+        </div>
       </section>
+
+      {/* On-device snapshot — only surfaced when it actually has something to give back. */}
+      {restorable > 0 && (
+        <section className="set-section">
+          <h2 className="set-h">Recover songs</h2>
+          <p className="set-note">
+            A snapshot from {formatDate(snapshotAt)} has {restorable} {restorable === 1 ? 'song' : 'songs'} that {restorable === 1 ? 'isn’t' : 'aren’t'} in your songbook right now. Restoring adds {restorable === 1 ? 'it' : 'them'} back — nothing you currently have is changed or removed.
+          </p>
+          <div className="set-buttons">
+            <Button variant="ghost" size="sm" iconLeft={<Icon n="rotate-ccw" s={16} />} onClick={onRestoreSnapshot}>
+              Restore {restorable} {restorable === 1 ? 'song' : 'songs'}
+            </Button>
+          </div>
+        </section>
+      )}
 
       {/* Image import */}
       <section className="set-section">

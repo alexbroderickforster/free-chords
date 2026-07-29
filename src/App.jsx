@@ -17,7 +17,7 @@ import { Guide } from './screens/Guide.jsx';
 import { SONGS, ALL_TAGS } from './data/songs.js';
 import { nextStatus } from './lib/music.js';
 import { Settings, SyncBadge } from './screens/Settings.jsx';
-import { loadSongs, saveSongs, loadTags, saveTags, loadTheme, saveTheme, loadThemeAt, saveThemeAt, loadPrefs, savePrefs, loadDeletions, saveDeletions, loadSyncOptIn, saveSyncOptIn, loadPlaylists, savePlaylists, loadPlaylistDeletions, savePlaylistDeletions, loadKeyPing, saveKeyPing, loadApiKey, saveApiKey, loadLoops, saveLoops, loadLoopDeletions, saveLoopDeletions, loadTuningMonitor, saveTuningMonitor, loadSeenGuide, saveSeenGuide, loadScores, saveScores, loadScoreDeletions, saveScoreDeletions } from './lib/storage.js';
+import { loadSongs, saveSongs, loadTags, saveTags, loadTheme, saveTheme, loadThemeAt, saveThemeAt, loadPrefs, savePrefs, loadDeletions, saveDeletions, loadSyncOptIn, saveSyncOptIn, loadPlaylists, savePlaylists, loadPlaylistDeletions, savePlaylistDeletions, loadKeyPing, saveKeyPing, loadApiKey, saveApiKey, loadLoops, saveLoops, loadLoopDeletions, saveLoopDeletions, loadTuningMonitor, saveTuningMonitor, loadSeenGuide, saveSeenGuide, loadScores, saveScores, loadScoreDeletions, saveScoreDeletions, requestPersistence, loadLastExportAt, saveLastExportAt, loadBackupSnoozeAt, saveBackupSnoozeAt, loadSnapshot, saveSnapshot } from './lib/storage.js';
 import { exportSongbook, parseBackup } from './lib/backup.js';
 import { renderSongbookHtml, downloadHtml, openDoc } from './lib/songbookExport.js';
 import { isStandalone, isIos } from './lib/offline.js';
@@ -97,6 +97,8 @@ export function App() {
   const [themeAt, setThemeAt] = useState(() => loadThemeAt());
   const [lastSyncedAt, setLastSyncedAt] = useState(0);
   const [fbOpen, setFbOpen] = useState(false);
+  const [lastExportAt, setLastExportAt] = useState(() => loadLastExportAt());
+  const [backupSnoozeAt, setBackupSnoozeAt] = useState(() => loadBackupSnoozeAt());
 
   useEffect(() => {
     document.documentElement.dataset.theme = dark ? 'dark' : 'light';
@@ -119,6 +121,13 @@ export function App() {
   usePersist(keyPing, saveKeyPing);
   usePersist(tuningMonitor, saveTuningMonitor);
   usePersist(apiKey, saveApiKey);
+
+  // Ask the browser not to evict our storage (best-effort; see storage.js).
+  useEffect(() => { requestPersistence(); }, []);
+  // Keep a rolling local snapshot so an accidental delete is undoable. Skipped
+  // for the seed fallback — a songbook that failed to load must never overwrite
+  // the good copy. saveSnapshot throttles and refuses to shrink.
+  useEffect(() => { if (songs !== SONGS) saveSnapshot(songs); }, [songs]);
 
   // Capture the browser's install prompt so "Add to home screen" (Chrome/Android)
   // can be offered from the Offline section. iOS has no such event (Share sheet).
@@ -437,9 +446,32 @@ export function App() {
   };
 
   // Export the whole songbook (songs, tags, per-song prefs, theme, playlists) to a file.
+  // Records when, so the app can stop nagging — and start again once it goes stale.
   const exportData = () => {
     const n = exportSongbook(songs, knownTags, prefs, dark ? 'dark' : 'light', playlists);
+    const now = Date.now();
+    setLastExportAt(now); saveLastExportAt(now);
     setToast(`Exported ${n} ${n === 1 ? 'song' : 'songs'}`);
+  };
+
+  const snoozeBackup = () => { const t = Date.now(); setBackupSnoozeAt(t); saveBackupSnoozeAt(t); };
+
+  // Put back any song in the snapshot that isn't in the songbook now. Purely
+  // additive — it never removes or overwrites what's there. Clears each restored
+  // song's tombstone so sync doesn't just delete it again on the next round.
+  const restoreSnapshot = () => {
+    const snap = loadSnapshot();
+    if (!snap) return;
+    const now = Date.now();
+    const missing = snap.songs.filter((s) => s && s.id && !songs.some((x) => x.id === s.id));
+    if (!missing.length) { setToast('Nothing to restore — every song is already here'); return; }
+    setSongs((prev) => [...prev, ...missing.map((s) => ({ ...s, updatedAt: now }))]);
+    setDeletions((prev) => {
+      const next = { ...prev };
+      missing.forEach((s) => { delete next[s.id]; });
+      return next;
+    });
+    setToast(`Restored ${missing.length} ${missing.length === 1 ? 'song' : 'songs'}`);
   };
 
   // Import a backup file: merge songs by id, union tags, restore prefs + theme + playlists.
@@ -501,9 +533,25 @@ export function App() {
   // NOTE: 'Add' lives as a button on the Songs page header (not a nav item).
   // 'Practice' is parked — still in screens/Practice.jsx; see that file.
 
+  // Nudge toward a real backup file once there's something worth losing, unless
+  // Drive sync is already carrying a copy off this device. Snoozing hides it for
+  // a week; exporting quiets it for a month.
+  const DAY = 86400000;
+  const ownSongs = songs.filter((s) => s.added !== 'sample').length;
+  const needsBackup = ownSongs >= 3 && !syncOn
+    && Date.now() - lastExportAt > 30 * DAY
+    && Date.now() - backupSnoozeAt > 7 * DAY;
+  const backupNudge = needsBackup
+    ? { count: ownSongs, never: !lastExportAt, onExport: exportData, onSnooze: snoozeBackup }
+    : null;
+
+  const snapshot = loadSnapshot();
+  const restorable = snapshot ? snapshot.songs.filter((s) => s && s.id && !songs.some((x) => x.id === s.id)).length : 0;
+
   // Backup + sync controls, shared between the desktop sidebar and mobile.
   const backupProps = {
     onExport: exportData, onImport: importData,
+    lastExportAt, snapshotAt: snapshot ? snapshot.at : 0, restorable, onRestoreSnapshot: restoreSnapshot,
     syncConfigured: syncConfigured(), syncOn, syncStatus, syncError, lastSyncedAt,
     onConnectSync: connectSync, onSyncNow: () => syncNow(true), onDisconnectSync: disconnectSync,
     apiKey, onSaveApiKey: setApiKey,
@@ -545,7 +593,7 @@ export function App() {
     ? <SongView song={song} onBack={closeSong} onArtist={goArtist} dark={dark} onToggleTheme={toggleTheme} focusMode={focus} onToggleFocus={() => setFocus((f) => !f)} onToggleStar={toggleStar} onCycleStatus={cycleStatus} onUpdateTags={updateTags} onEdit={() => setEditing(true)} prefs={prefsFor(song.id)} onSavePref={(patch) => savePref(song.id, patch)} onCapo={(v) => updateSong(song.id, { capo: v })} onAddToPlaylist={setAddToPlaylistSong} playlist={svPlaylist} onPlaylistNext={playlistNext} onPlaylistPrev={playlistPrev} onPlaylistExit={exitPlaylist} keyPing={keyPing} onToggleKeyPing={() => setKeyPing((v) => !v)} onExport={exportSong} tuningMonitor={tuningMonitor} onSetTuningMonitor={setTuningMonitor} onOpenTuner={openTuner} />
     : (
       <main className="app-body">
-        {tab === 'songs' && <Library songs={songs} tags={knownTags} onOpen={openSong} onAdd={() => setTab('add')} artistFilter={artistFilter} onClearArtist={() => setArtistFilter(null)} onArtist={goArtist} onToggleStar={toggleStar} onCycleStatus={cycleStatus} onAddToPlaylist={setAddToPlaylistSong} />}
+        {tab === 'songs' && <Library songs={songs} tags={knownTags} onOpen={openSong} onAdd={() => setTab('add')} artistFilter={artistFilter} onClearArtist={() => setArtistFilter(null)} onArtist={goArtist} onToggleStar={toggleStar} onCycleStatus={cycleStatus} onAddToPlaylist={setAddToPlaylistSong} backupNudge={backupNudge} />}
         {tab === 'playlists' && <Playlists playlists={playlists} albums={albumOptions} resolvePlaylistSongs={resolvePlaylistSongs} onOpenSong={openSong} onPlayPlaylist={startPlaylist} onCreatePlaylist={createPlaylist} onCreateAlbumPlaylist={createAlbumPlaylist} onRenamePlaylist={renamePlaylist} onDeletePlaylist={deletePlaylist} onRemoveSong={removeSongFromPlaylist} onMoveSong={movePlaylistSong} onExport={exportPlaylist} />}
         {tab === 'add' && <AddImport onBack={() => setTab('songs')} knownTags={knownTags} artistOptions={artistOptions} albumOptions={albumOptions} apiKey={apiKey} onSaveApiKey={setApiKey} onSave={addSong} />}
         {tab === 'practice' && <Practice loops={loops} onSaveLoop={saveLoop} onDeleteLoop={deleteLoop} initialLoop={initialLoop} />}
