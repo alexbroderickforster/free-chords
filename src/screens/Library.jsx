@@ -149,12 +149,22 @@ export function Library({ songs: songsProp, tags: knownTags = [], onOpen, onAdd,
       {!artistFilter && backupNudge && (
         <div className="lib-backup">
           <button className="lib-welcome-x" aria-label="Dismiss" onClick={backupNudge.onSnooze}><Icon n="x" s={16} /></button>
-          <div className="lib-backup-head"><Icon n="download" s={16} /><span className="lib-welcome-title">Save a copy of your songbook</span></div>
+          <div className="lib-backup-head"><Icon n="download" s={16} /><span className="lib-welcome-title">Keep a copy somewhere safe</span></div>
           <p className="lib-welcome-body">
-            Your {backupNudge.count} songs live only in this browser, and browsers do clear that out on their own — Safari wipes it after about a week away. {backupNudge.never ? 'You haven’t saved a backup file yet.' : 'Your last backup file is over a month old.'} It takes one tap.
+            Your {backupNudge.count} songs live only in this browser, and browsers do clear that out on their own — Safari wipes it after about a week away. {backupNudge.never ? 'You haven’t saved a backup yet.' : 'Your last backup is over a month old.'}
+            {backupNudge.canSync ? ' Connecting Google Drive keeps a copy off this device from now on, without you having to remember.' : ' It takes one tap.'}
           </p>
           <div className="lib-backup-actions">
-            <Button variant="primary" size="sm" iconLeft={<Icon n="download" s={16} />} onClick={backupNudge.onExport}>Back up now</Button>
+            {backupNudge.canSync ? (
+              <>
+                <Button variant="primary" size="sm" iconLeft={<Icon n="upload" s={16} />} onClick={backupNudge.onConnectSync} disabled={backupNudge.syncing}>
+                  {backupNudge.syncing ? 'Connecting…' : 'Sync with Google Drive'}
+                </Button>
+                <button type="button" className="bk-link" onClick={backupNudge.onExport}>Save a file instead</button>
+              </>
+            ) : (
+              <Button variant="primary" size="sm" iconLeft={<Icon n="download" s={16} />} onClick={backupNudge.onExport}>Back up now</Button>
+            )}
             <button type="button" className="bk-link" onClick={backupNudge.onSnooze}>Remind me later</button>
           </div>
         </div>

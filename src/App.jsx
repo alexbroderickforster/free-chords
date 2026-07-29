@@ -542,7 +542,12 @@ export function App() {
     && Date.now() - lastExportAt > 30 * DAY
     && Date.now() - backupSnoozeAt > 7 * DAY;
   const backupNudge = needsBackup
-    ? { count: ownSongs, never: !lastExportAt, onExport: exportData, onSnooze: snoozeBackup }
+    ? {
+        count: ownSongs, never: !lastExportAt, onExport: exportData, onSnooze: snoozeBackup,
+        // Drive is the durable option — it's the only one that keeps working
+        // without the user remembering to do anything.
+        canSync: syncConfigured() && !isIosStandalone(), onConnectSync: connectSync, syncing: syncStatus === 'syncing',
+      }
     : null;
 
   const snapshot = loadSnapshot();
