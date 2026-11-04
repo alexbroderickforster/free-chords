@@ -12,6 +12,8 @@ through it all.
 **▶ Live: <https://freechords.app>** — works in any browser on
 phone, tablet, or desktop, and keeps working **offline** after the first load.
 
+[Portfolio case study](https://alexbf.com/work/freechords/)
+
 ## Screenshots
 
 <p align="center">
